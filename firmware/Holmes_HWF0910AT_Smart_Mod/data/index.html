@@ -1,0 +1,2876 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HWF0910AT Fan">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<title>Holmes HWF0910AT Window Fan Smart Mod</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg-0:#06101d;
+  --bg-1:#0a1830;
+  --bg-2:#10254a;
+  --text:#f5f8ff;
+  --muted:#9aa9bd;
+  --line:rgba(255,255,255,.13);
+  --glass:rgba(16,30,54,.52);
+  --glass-strong:rgba(17,34,62,.82);
+  --glass-soft:rgba(255,255,255,.07);
+  --chip:rgba(255,255,255,.08);
+  --shadow:0 24px 80px rgba(0,0,0,.35);
+  --accent:#2f8dff;
+  --accent-2:#7f7cff;
+  --good:#54d98c;
+  --warn:#ffc66d;
+  --danger:#ff7d86;
+  --cold:#63d5ff;
+  --radius-xl:30px;
+  --radius-lg:24px;
+  --radius-md:18px;
+  --blur:22px;
+}
+body[data-theme="light"]{
+  color-scheme:light;
+  --bg-0:#dfe9f5;
+  --bg-1:#edf4fb;
+  --bg-2:#c9d8eb;
+  --text:#122033;
+  --muted:#607086;
+  --line:rgba(15,38,67,.12);
+  --glass:rgba(255,255,255,.56);
+  --glass-strong:rgba(255,255,255,.86);
+  --glass-soft:rgba(255,255,255,.50);
+  --chip:rgba(255,255,255,.66);
+  --shadow:0 30px 90px rgba(33,58,91,.18);
+  --accent:#287cf4;
+  --accent-2:#6558e8;
+  --good:#14965a;
+  --warn:#b67600;
+  --danger:#d44e5d;
+  --cold:#008ec3;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+html{scroll-behavior:smooth}
+body{
+  color:var(--text);
+  background:
+    radial-gradient(circle at 12% 12%, color-mix(in srgb,var(--accent) 22%, transparent), transparent 30rem),
+    radial-gradient(circle at 88% 8%, color-mix(in srgb,var(--accent-2) 18%, transparent), transparent 34rem),
+    linear-gradient(145deg,var(--bg-0),var(--bg-1) 50%,var(--bg-2));
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  letter-spacing:0;
+  overflow-x:hidden;
+  transition:background .4s ease,color .35s ease;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:.42;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:32px 32px;
+  mask-image:linear-gradient(to bottom,black,transparent 78%);
+}
+button,input,select{font:inherit}
+button{color:inherit;touch-action:manipulation}
+.app{
+  width:min(100%,1480px);
+  margin:0 auto;
+  padding:16px 14px 96px;
+  position:relative;
+}
+.glass{
+  background:linear-gradient(145deg,var(--glass),color-mix(in srgb,var(--glass) 82%,transparent));
+  border:1px solid var(--line);
+  box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.07);
+  backdrop-filter:blur(var(--blur)) saturate(135%);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(135%);
+}
+.topbar{
+  display:flex;
+  gap:14px;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 16px;
+  border-radius:22px;
+  position:sticky;
+  top:10px;
+  z-index:20;
+  margin-bottom:14px;
+}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-logo,.login-logo{
+  width:46px;
+  height:46px;
+  border-radius:13px;
+  border:1px solid var(--line);
+  background:var(--glass-soft);
+  box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 18%,transparent);
+  object-fit:cover;
+  flex:0 0 auto;
+}
+.brand-copy{min-width:0}
+.brand h1{font-size:1.18rem;line-height:1.1;margin:0;font-weight:800;letter-spacing:0}
+.brand p{font-size:.78rem;margin:4px 0 0;color:var(--muted)}
+.top-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.power-group{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:210px}
+.power-group .action-btn{justify-content:center;padding:0 10px}
+.icon-btn,.pill-btn,.action-btn{
+  border:1px solid var(--line);
+  background:var(--chip);
+  border-radius:999px;
+  min-height:42px;
+  cursor:pointer;
+  transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.icon-btn{width:42px;display:grid;place-items:center;font-size:1rem}
+.pill-btn,.action-btn{padding:0 13px;display:flex;align-items:center;gap:8px;font-weight:760;font-size:.78rem}
+.action-btn.danger{background:color-mix(in srgb,var(--danger) 22%,var(--chip));border-color:color-mix(in srgb,var(--danger) 50%,var(--line))}
+.action-btn.good{background:color-mix(in srgb,var(--good) 18%,var(--chip));border-color:color-mix(in srgb,var(--good) 42%,var(--line))}
+.action-btn.subtle{background:color-mix(in srgb,var(--accent) 12%,var(--chip));border-color:color-mix(in srgb,var(--accent) 28%,var(--line))}
+.icon-btn:active,.pill-btn:active,.action-btn:active,.seg-btn:active,.preset:active,.led-dot:active{transform:scale(.97)}
+.theme-dot{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#ffe39b,#ffd063);box-shadow:0 0 18px rgba(255,206,92,.25)}
+body[data-theme="dark"] .theme-dot{background:linear-gradient(135deg,#d8e6ff,#75a7ff);box-shadow:inset -6px -2px 0 #3056a8}
+.status-strip{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:12px;
+}
+.status-pill{
+  min-width:0;
+  padding:10px 12px;
+  border-radius:16px;
+  background:var(--glass-soft);
+  border:1px solid var(--line);
+  backdrop-filter:blur(14px);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:.76rem;
+}
+.status-pill b,.status-pill strong{color:var(--text);font-weight:760}
+.status-pill span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 12px color-mix(in srgb,var(--good) 70%,transparent);flex:0 0 auto}
+.dot.warn{background:var(--warn);box-shadow:0 0 12px color-mix(in srgb,var(--warn) 60%,transparent)}
+.dot.bad{background:var(--danger);box-shadow:0 0 12px color-mix(in srgb,var(--danger) 60%,transparent)}
+.dashboard{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.view-hidden{display:none!important}
+.card{
+  border-radius:var(--radius-lg);
+  padding:15px;
+  min-width:0;
+  position:relative;
+  overflow:hidden;
+  transition:transform .2s ease,border-color .2s ease,background .2s ease;
+}
+.card::after{
+  content:"";
+  position:absolute;
+  inset:-80% -50% auto;
+  height:180%;
+  pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,.09),transparent 60%);
+  transform:rotate(15deg);
+}
+.expandable{cursor:pointer}
+@media (hover:hover){
+  .expandable:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+}
+.card>*{position:relative;z-index:1}
+.span-2{grid-column:span 2}
+.eyebrow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--muted);
+  font-size:.72rem;
+  font-weight:760;
+  margin-bottom:11px;
+}
+.eyebrow strong{color:var(--text)}
+.big-temp{
+  font-size:3rem;
+  line-height:1;
+  font-weight:780;
+  margin:2px 0 10px;
+}
+.big-temp span{font-size:.52em;color:var(--muted);font-weight:540}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px 12px;color:var(--muted);font-size:.76rem}
+.meta-row b{color:var(--text)}
+.trend{position:absolute;right:14px;bottom:18px;width:86px;height:42px;opacity:.9}
+.clock{font-size:1.95rem;font-weight:780;letter-spacing:0}
+.date{font-size:.72rem;color:var(--muted);margin-top:4px}
+.fan-list{display:grid;gap:8px}
+.fan-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:10px 11px;
+  border-radius:16px;
+  background:var(--glass-soft);
+  border:1px solid var(--line);
+}
+.fan-id{
+  width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;
+  font-size:.78rem;font-weight:800;
+  background:linear-gradient(145deg,var(--accent),var(--accent-2));
+  color:white;
+  box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 25%,transparent);
+}
+.fan-main{min-width:0}
+.fan-top{display:flex;align-items:center;gap:7px;font-size:.82rem;font-weight:760}
+.fan-sub{margin-top:4px;color:var(--muted);font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fan-dir{text-align:right;font-size:.76rem;font-weight:760}
+.fan-dir small{display:block;color:var(--muted);font-size:.64rem;font-weight:600;margin-top:3px}
+.on{color:var(--good)}
+.off{color:var(--muted)}
+.bad{color:var(--danger)}
+.warn{color:var(--warn)}
+.speed-value{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:10px;margin-bottom:10px;
+}
+.speed-value strong{font-size:2rem;letter-spacing:0}
+.speed-value span{font-size:.78rem;color:var(--muted)}
+.range{
+  width:100%;
+  accent-color:var(--accent);
+  cursor:pointer;
+}
+.range::-webkit-slider-runnable-track{
+  height:6px;border-radius:99px;background:linear-gradient(90deg,var(--accent),rgba(255,255,255,.12));
+}
+.range::-webkit-slider-thumb{
+  margin-top:-6px;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--accent);
+}
+.speed-controls{display:grid;grid-template-columns:minmax(0,1fr) 76px;gap:9px;align-items:center}
+.speed-power{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 10px}
+.predefined-mode{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.mode-subtitle{font-size:.68rem;text-transform:uppercase;letter-spacing:0;color:var(--muted);font-weight:760;margin-bottom:7px}
+.mode-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.mode-actions.temp-actions{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:7px}
+.mode-actions .preset{min-height:34px}
+.action-btn.active{
+  outline:2px solid color-mix(in srgb,var(--accent) 62%,transparent);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 14%,transparent);
+}
+.number,.select{
+  width:100%;
+  min-height:40px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--glass-soft);
+  color:var(--text);
+  padding:8px 10px;
+}
+.number{text-align:center;font-variant-numeric:tabular-nums}
+.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.field{display:grid;gap:5px;min-width:0}
+.field label{font-size:.62rem;font-weight:760;color:var(--muted);text-transform:uppercase}
+.text-input,.file-input{
+  width:100%;
+  min-height:40px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--glass-soft);
+  color:var(--text);
+  padding:8px 10px;
+}
+.file-input{font-size:.72rem}
+.progress-shell{
+  height:10px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--glass-soft);
+  overflow:hidden;
+  margin-top:10px;
+}
+.progress-fill{
+  width:0%;
+  height:100%;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));
+  transition:width .18s ease;
+}
+.progress-note{margin-top:7px;color:var(--muted);font-size:.72rem}
+.wifi-network-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+  max-height:190px;
+  overflow:auto;
+  margin:10px 0;
+}
+.wifi-network{
+  min-width:0;
+  min-height:48px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:7px;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--glass-soft);
+  padding:8px 10px;
+  cursor:pointer;
+  text-align:left;
+}
+.wifi-network strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem}
+.wifi-network small{display:block;color:var(--muted);font-size:.62rem;margin-top:3px}
+.wifi-network.active{border-color:color-mix(in srgb,var(--accent) 62%,var(--line));background:color-mix(in srgb,var(--accent) 14%,var(--glass-soft))}
+.wifi-empty{grid-column:1/-1;color:var(--muted);font-size:.72rem;padding:8px 2px}
+.ip-compose{display:grid;grid-template-columns:minmax(0,1fr) 72px;gap:7px;align-items:center}
+.ip-prefix{min-height:40px;display:flex;align-items:center;justify-content:flex-end;border:1px solid var(--line);border-radius:12px;background:var(--glass-soft);padding:8px 10px;font-size:.78rem;overflow:hidden}
+.static-ip-controls.disabled{opacity:.5}
+.presets{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:11px}
+.preset{
+  min-width:0;
+  padding:8px 3px;
+  border-radius:11px;
+  border:1px solid var(--line);
+  background:var(--glass-soft);
+  font-size:.6rem;
+  color:var(--muted);
+  cursor:pointer;
+  font-weight:760;
+}
+.preset.active{
+  background:color-mix(in srgb,var(--accent) 28%,var(--glass-soft));
+  color:var(--text);
+  border-color:color-mix(in srgb,var(--accent) 54%,var(--line));
+  box-shadow:0 0 20px color-mix(in srgb,var(--accent) 14%,transparent);
+}
+.switch{display:inline-flex;align-items:center;gap:9px;font-weight:760;font-size:.78rem;color:var(--text)}
+.switch input{
+  appearance:none;
+  -webkit-appearance:none;
+  width:38px;
+  height:22px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.12);
+  position:relative;
+  cursor:pointer;
+  box-shadow:inset 0 0 10px rgba(0,0,0,.12);
+  flex:0 0 auto;
+}
+.switch input::before{
+  content:"";
+  position:absolute;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  left:2px;
+  top:2px;
+  background:#fff;
+  box-shadow:0 4px 10px rgba(0,0,0,.25);
+  transition:transform .18s ease;
+}
+.switch input:checked{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  border-color:color-mix(in srgb,var(--accent) 64%,var(--line));
+}
+.switch input:checked::before{transform:translateX(16px)}
+.control-row{display:grid;gap:9px;margin-top:11px}
+.control-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.inline-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.direction-grid{display:grid;gap:10px}
+.direction-row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
+.direction-label{font-size:.75rem;font-weight:780}
+.segmented{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  padding:4px;
+  gap:4px;
+  background:var(--glass-soft);
+  border:1px solid var(--line);
+  border-radius:14px;
+}
+.seg-btn,.seg-pill{
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:var(--muted);
+  padding:8px 5px;
+  font-size:.66rem;
+  font-weight:760;
+  text-align:center;
+}
+.seg-btn{cursor:pointer}
+.seg-pill.active,.seg-btn.active{
+  background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 30%,transparent),color-mix(in srgb,var(--accent-2) 24%,transparent));
+  color:var(--text);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 44%,transparent);
+}
+.seg-pill.bad{background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--text)}
+.leds{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(74px,1fr);
+  gap:7px;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+  padding-bottom:4px;
+  scrollbar-width:none;
+}
+.leds::-webkit-scrollbar{display:none}
+.led{
+  display:grid;
+  place-items:center;
+  gap:7px;
+  font-size:.62rem;
+  color:var(--muted);
+  padding:8px 6px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--glass-soft);
+}
+.led small{font-size:.56rem;color:var(--muted);font-weight:760}
+.led-dot{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  border:1px solid var(--line);
+  cursor:pointer;
+  background:rgba(255,255,255,.08);
+  box-shadow:inset 0 0 10px rgba(255,255,255,.04);
+}
+.led-dot.on{
+  box-shadow:0 0 18px var(--led-glow,rgba(84,217,140,.42)),inset 0 0 8px rgba(255,255,255,.45);
+}
+.led-dot.off{opacity:.22;filter:saturate(.12) brightness(.48);box-shadow:inset 0 0 10px rgba(255,255,255,.04)}
+.led-dot.lit{outline:2px solid color-mix(in srgb,var(--accent) 70%,transparent);outline-offset:2px}
+.led-mini-tools{display:grid;grid-template-columns:1fr;gap:6px;width:100%;align-items:center}
+.led-mini-tools input[type=color]{width:100%;height:34px;border-radius:10px}
+.color-box{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
+input[type=color]{
+  width:66px;
+  height:48px;
+  padding:2px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--glass-soft);
+}
+.color-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dimmer-block{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid var(--line);
+}
+.dimmer-head{margin-bottom:8px}
+.chip{
+  border:1px solid var(--line);
+  background:var(--glass-soft);
+  border-radius:14px;
+  padding:8px;
+  min-width:0;
+}
+.chip b{display:block;color:var(--muted);font-size:.62rem;text-transform:uppercase;margin-bottom:3px}
+.chip span{overflow-wrap:anywhere}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.mini-metric{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.mini-metric strong{display:block;font-size:1.06rem}
+.mini-metric small{display:block;margin-top:3px;color:var(--muted);font-size:.68rem}
+.metric-badge{
+  width:42px;height:42px;border-radius:14px;
+  display:grid;place-items:center;
+  border:1px solid var(--line);
+  background:var(--glass-soft);
+  color:var(--accent);
+  font-weight:850;
+}
+.activity{display:grid;gap:8px}
+.activity-item{display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:center;font-size:.7rem;color:var(--muted)}
+.activity-item time{font-variant-numeric:tabular-nums;color:var(--text);opacity:.72}
+.activity-item .dot{width:6px;height:6px}
+.module-list{display:grid;gap:7px}
+.module-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:9px;
+  align-items:center;
+  padding:9px 10px;
+  border-radius:14px;
+  background:var(--glass-soft);
+  border:1px solid var(--line);
+  font-size:.72rem;
+}
+.module-row b{font-size:.78rem}
+.module-row small{display:block;color:var(--muted);margin-top:2px}
+.login-screen{
+  position:fixed;
+  inset:0;
+  z-index:120;
+  display:grid;
+  place-items:center;
+  padding:22px;
+  background:linear-gradient(145deg,var(--bg-0),var(--bg-1) 58%,var(--bg-2));
+}
+.login-screen.hidden{display:none}
+.login-card{width:min(100%,390px);border-radius:24px;padding:20px}
+.login-logo{width:58px;height:58px;border-radius:16px;margin-bottom:12px}
+.login-card h2{margin:0 0 6px;font-size:1.18rem}
+.login-card p{margin:0 0 16px;color:var(--muted);font-size:.78rem}
+.login-fields{display:grid;gap:10px}
+.login-error{min-height:18px;color:var(--danger);font-size:.72rem;margin-top:8px}
+.schedule-grid{display:grid;gap:10px}
+.schedule-mode-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.schedule-mode-row .switch{justify-content:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:14px;background:var(--glass-soft)}
+.day-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day-btn{
+  width:100%;
+  aspect-ratio:1;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--glass-soft);
+  color:var(--muted);
+  font-weight:850;
+  cursor:pointer;
+}
+.day-btn.active{background:linear-gradient(145deg,var(--accent),var(--accent-2));color:white}
+.day-btn.selected{outline:2px solid color-mix(in srgb,var(--good) 76%,white);outline-offset:2px}
+.schedule-span-note{margin:0;text-align:center;color:var(--muted);font-size:.7rem;font-weight:760}
+.schedule-span-note.invalid{color:var(--danger)}
+.schedule-time-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.time-wheel-card{
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--glass-soft);
+  padding:9px;
+}
+.time-wheel-card label{display:block;font-size:.62rem;font-weight:760;color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.time-wheel{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(68px,.78fr);
+  gap:6px;
+}
+.time-wheel::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:50%;
+  height:42px;
+  transform:translateY(-50%);
+  border:1px solid color-mix(in srgb,var(--accent) 44%,var(--line));
+  border-radius:13px;
+  background:color-mix(in srgb,var(--accent) 10%,transparent);
+  pointer-events:none;
+}
+.time-wheel-col{
+  position:relative;
+  z-index:1;
+  width:100%;
+  min-width:0;
+  height:130px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  touch-action:pan-y;
+  overscroll-behavior:contain;
+  scroll-snap-type:y mandatory;
+  scrollbar-width:none;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--glass-soft);
+  padding:44px 0;
+  -webkit-overflow-scrolling:touch;
+}
+.time-wheel-col::-webkit-scrollbar{display:none}
+.time-wheel-option{
+  width:100%;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+  touch-action:pan-y;
+  font-weight:760;
+  scroll-snap-align:center;
+  transition:background .16s ease,color .16s ease,transform .16s ease;
+}
+.time-wheel-option.active{
+  color:var(--text);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 32%,transparent),color-mix(in srgb,var(--accent-2) 22%,transparent));
+  transform:scale(1.04);
+}
+.time-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.timer-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.timer-grid .number{text-align:left}
+.footer-note{margin:15px 4px 0;color:var(--muted);font-size:.66rem;text-align:center}
+.bottom-nav{
+  position:fixed;
+  left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));
+  z-index:18;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  border-radius:22px;
+  padding:8px;
+  max-width:360px;
+  margin:auto;
+}
+.nav-btn{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:7px 4px;
+  border-radius:14px;
+  display:grid;
+  gap:4px;
+  place-items:center;
+  font-size:.59rem;
+  cursor:pointer;
+}
+.nav-btn.active{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.nav-glyph{font-size:1.1rem;line-height:1}
+.detail-overlay{
+  position:fixed;
+  inset:0;
+  z-index:60;
+  display:grid;
+  place-items:end center;
+  padding:14px;
+  background:color-mix(in srgb,var(--bg-0) 34%,transparent);
+  backdrop-filter:blur(16px) saturate(125%);
+  -webkit-backdrop-filter:blur(16px) saturate(125%);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .22s ease;
+}
+.detail-overlay.open{opacity:1;pointer-events:auto}
+.detail{
+  width:min(100%,760px);
+  max-height:min(88vh,820px);
+  overflow:auto;
+  border-radius:30px;
+  padding:14px;
+  transform:translateY(24px) scale(.94);
+  opacity:.6;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--glass) 88%,transparent),color-mix(in srgb,var(--glass-soft) 78%,transparent));
+  transition:transform .28s cubic-bezier(.2,.9,.2,1),opacity .28s ease;
+}
+.detail-overlay.open .detail{transform:translateY(0) scale(1);opacity:1}
+.detail-head{
+  position:sticky;
+  top:0;
+  z-index:4;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:5px 4px 12px;
+  background:linear-gradient(to bottom,var(--glass-strong) 55%,transparent);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+.detail-head h2{font-size:1.05rem;margin:0;letter-spacing:0}
+.back-btn{
+  width:42px;height:42px;border-radius:50%;border:1px solid var(--line);
+  background:var(--glass-soft);cursor:pointer;font-size:1.1rem;
+}
+.detail-body{display:grid;gap:10px}
+.detail-panel{
+  border-radius:20px;
+  padding:15px;
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--glass) 78%,transparent),color-mix(in srgb,var(--glass-soft) 66%,transparent));
+  backdrop-filter:blur(18px) saturate(130%);
+  -webkit-backdrop-filter:blur(18px) saturate(130%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.detail-panel h3{margin:0 0 10px;font-size:.86rem}
+.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.temp-history-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+.temp-chart{
+  width:100%;
+  height:190px;
+  margin-top:12px;
+  color:var(--accent);
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--glass-soft);
+}
+.hour-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:10px}
+.hour-cell{
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--glass-soft);
+  font-size:.68rem;
+}
+.hour-cell b{display:block;font-size:.74rem;color:var(--text);margin-top:2px}
+.led-detail-list{display:grid;gap:9px}
+.led-detail-row{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border:1px solid var(--line);
+  background:var(--glass-soft);
+  border-radius:16px;
+}
+.led-detail-tools{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
+.dim{opacity:.58}
+.toast{
+  position:fixed;
+  left:50%;
+  top:50%;
+  z-index:80;
+  opacity:0;
+  transform:translate(-50%,calc(-50% + 10px));
+  transition:.18s;
+  background:var(--glass-strong);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px 14px;
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(18px);
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%)}
+@media(max-width:560px){
+  .topbar{align-items:stretch;flex-direction:column}
+  .top-actions{width:100%;justify-content:flex-start}
+  .action-btn.power{flex:1;justify-content:center}
+}
+@media(max-width:420px){
+  .big-temp{font-size:2.55rem}
+  .control-pair,.color-box,.color-meta,.detail-grid,.led-detail-tools,.field-grid,.schedule-time-grid,.wifi-network-list{grid-template-columns:1fr}
+}
+@media(min-width:760px){
+  .app{padding:22px 22px 44px}
+  .status-strip{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .dashboard{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .span-2{grid-column:span 2}
+  .span-4{grid-column:span 4}
+  .card{padding:17px}
+  .bottom-nav{position:sticky;bottom:12px;margin-top:14px}
+  .detail-overlay{place-items:center}
+  .detail{max-height:86vh}
+}
+@media(min-width:1100px){
+  .app{
+    display:grid;
+    grid-template-columns:84px minmax(0,1fr);
+    gap:14px;
+    align-items:start;
+  }
+  .topbar,.status-strip,.dashboard,.footer-note{grid-column:2}
+  .topbar{top:16px}
+  .bottom-nav{
+    grid-column:1;
+    grid-row:1 / span 4;
+    position:sticky;
+    top:16px;
+    left:auto;right:auto;bottom:auto;
+    width:84px;
+    display:flex;
+    flex-direction:column;
+    margin:0;
+    padding:10px;
+    border-radius:28px;
+  }
+  .nav-btn{min-height:66px}
+  .dashboard{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .span-2{grid-column:span 2}
+  .span-3{grid-column:span 3}
+  .span-4{grid-column:span 4}
+  .span-6{grid-column:span 6}
+  .temperature-card{grid-column:span 4}
+  .time-card{grid-column:span 2}
+  .fans-card,.speed-card,.direction-card,.led-card,.global-led-card{grid-column:span 3}
+  .button-card,.health-card{grid-column:span 2}
+  .activity-card,.system-card,.wifi-card,.ota-card{grid-column:span 3}
+  .big-temp{font-size:4rem}
+}
+@media(prefers-reduced-motion:reduce){
+  *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body data-theme="light">
+<div class="login-screen" id="loginScreen">
+  <section class="login-card glass" aria-labelledby="loginTitle">
+    <img class="login-logo" src="/app-icon-192.png" alt="" aria-hidden="true">
+    <h2 id="loginTitle" data-i18n="loginTitle">Fan access</h2>
+    <p data-i18n="loginHint">Sign in to open the controls.</p>
+    <form class="login-fields" id="loginForm">
+      <div class="field">
+        <label for="loginUser" data-i18n="username">Username</label>
+        <input class="text-input" id="loginUser" type="text" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="loginPass" data-i18n="password">Password</label>
+        <input class="text-input" id="loginPass" type="password" autocomplete="current-password">
+      </div>
+      <label class="switch"><input id="rememberLogin" type="checkbox"> <span data-i18n="rememberLogin">Remember login</span></label>
+      <button class="action-btn good" id="loginButton" type="submit"><span>→</span><span data-i18n="signIn">Sign in</span></button>
+      <div class="login-error" id="loginError"></div>
+    </form>
+  </section>
+</div>
+<main class="app" id="home">
+  <header class="topbar glass">
+    <div class="brand">
+      <img class="brand-logo" src="/app-icon-192.png" alt="" aria-hidden="true">
+      <div class="brand-copy">
+        <h1>Holmes HWF0910AT Window Fan Smart Mod</h1>
+        <p data-i18n="subtitle">by Ivves</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="power-group">
+        <button class="action-btn good power" id="powerOnTop" type="button"><span>⏻</span><span data-i18n="powerOnHi">POWER ON (HI)</span></button>
+        <button class="action-btn danger power" id="powerOffTop" type="button"><span>⏻</span><span data-i18n="powerOff">Apagar</span></button>
+      </div>
+      <button class="icon-btn" id="refreshBtn" type="button" aria-label="Actualizar">↻</button>
+      <button class="pill-btn" id="themeToggle" type="button" aria-label="Cambiar tema"><span class="theme-dot" aria-hidden="true"></span><span data-i18n="themeShort">Noche</span></button>
+      <button class="pill-btn" id="langToggle" type="button" aria-label="Cambiar idioma">EN</button>
+    </div>
+  </header>
+
+  <nav class="bottom-nav glass" aria-label="Navegacion principal">
+    <button class="nav-btn active" type="button" data-view-target="home"><span class="nav-glyph">⌂</span><span data-i18n="navHome">Inicio</span></button>
+    <button class="nav-btn" type="button" data-view-target="system"><span class="nav-glyph">⚙</span><span data-i18n="navSystem">Sistema</span></button>
+  </nav>
+
+  <section class="status-strip" aria-label="Estado rapido">
+    <div class="status-pill"><span class="dot warn" id="apiDot"></span><b>Wi-Fi</b><span id="apiText">Conectando</span></div>
+    <div class="status-pill"><span class="dot" id="syncDot"></span><b data-i18n="sync">Sincronizacion</b><span id="syncText">--</span></div>
+    <div class="status-pill"><span class="dot bad" id="zcDot"></span><b>Zero-cross</b><span id="zcText">--</span></div>
+    <div class="status-pill"><span class="dot" id="fwDot"></span><b>FW</b><span id="fwText">--</span></div>
+  </section>
+
+  <section class="dashboard">
+    <article class="card glass expandable temperature-card span-2" id="temperatureCard" tabindex="0" data-detail="temperature" data-view="home">
+      <div class="eyebrow"><strong data-i18n="temperature">Temperatura actual</strong><span>DS18B20</span></div>
+      <div class="big-temp"><span id="tempF">--°F</span> <span>/ <span id="tempC">--°C</span></span></div>
+      <div class="meta-row">
+        <span><span data-i18n="setpoint">Setpoint</span>: <b id="setpointText">--</b></span>
+        <span><span class="dot" id="tempDot" style="display:inline-block;margin-right:5px"></span><span id="tempState">--</span></span>
+      </div>
+      <svg class="trend" viewBox="0 0 100 46" aria-hidden="true">
+        <path d="M2 35 C12 36 16 25 25 29 S37 17 46 23 S62 11 70 17 S82 8 98 4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="color:var(--good)"/>
+      </svg>
+    </article>
+
+    <article class="card glass expandable time-card" id="timeCard" tabindex="0" data-detail="time" data-view="home">
+      <div class="eyebrow"><strong data-i18n="time">Hora</strong><span data-i18n="local">Local</span></div>
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="dateText">--</div>
+    </article>
+
+    <article class="card glass fans-card span-2" id="fansCard" data-view="home">
+      <div class="eyebrow"><strong data-i18n="fansSync">Ventiladores sincronizados</strong><span id="sharedSummary">--</span></div>
+      <div class="fan-list">
+        <div class="fan-row">
+          <div class="fan-id">A</div>
+          <div class="fan-main">
+            <div class="fan-top"><span id="fanAState" class="off">OFF</span><span data-i18n="fanA">Ventilador A</span></div>
+            <div class="fan-sub"><span data-i18n="sharedSpeed">Velocidad comun</span> <b id="fanASpeed">--</b> · <b id="fanAVolt">-- VAC</b></div>
+          </div>
+          <div class="fan-dir"><span id="fanADirection">OFF</span><small data-i18n="sliderState">slider fisico</small></div>
+        </div>
+        <div class="fan-row">
+          <div class="fan-id">B</div>
+          <div class="fan-main">
+            <div class="fan-top"><span id="fanBState" class="off">OFF</span><span data-i18n="fanB">Ventilador B</span></div>
+            <div class="fan-sub"><span data-i18n="sharedSpeed">Velocidad comun</span> <b id="fanBSpeed">--</b> · <b id="fanBVolt">-- VAC</b></div>
+          </div>
+          <div class="fan-dir"><span id="fanBDirection">OFF</span><small data-i18n="sliderState">slider fisico</small></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card glass speed-card span-2" id="speedCard" data-view="home">
+      <div class="eyebrow"><strong data-i18n="syncSpeed">Velocidad sincronizada</strong><span><span data-i18n="bothFans">ambos ventiladores</span> · <b id="modeShort">--</b></span></div>
+      <div class="speed-value"><strong id="speedValue">100%</strong><span><b id="voltageValue">-- VAC</b> · <span data-i18n="estimated">estimado</span></span></div>
+      <div class="speed-power" role="group" aria-label="Fan power">
+        <button class="action-btn good" id="fanOnBtn" type="button" data-i18n="fanOn">ON</button>
+        <button class="action-btn danger" id="fanOffBtn" type="button" data-i18n="fanOff">OFF</button>
+      </div>
+      <div class="presets" id="presets">
+        <button type="button" class="preset" data-speed="85">LOWEST</button>
+        <button type="button" class="preset" data-speed="88">LOWER</button>
+        <button type="button" class="preset" data-speed="92">LOW</button>
+        <button type="button" class="preset" data-speed="96">FAST</button>
+        <button type="button" class="preset" data-speed="100">FASTEST</button>
+      </div>
+      <label class="switch" style="margin-top:11px"><input id="customEnabled" type="checkbox"> <span data-i18n="useSlider">Usar slider</span></label>
+      <div class="speed-controls" id="speedControlRow">
+        <input class="range" id="speedRange" type="range" min="85" max="100" value="100" step="1" aria-label="Velocidad sincronizada">
+        <input class="number" id="speedNumber" type="number" min="85" max="100" value="100" step="1" inputmode="numeric">
+      </div>
+      <div class="meta-row" style="margin-top:10px"><span id="boostState">Boost --</span></div>
+      <div class="predefined-mode">
+        <div class="mode-subtitle" data-i18n="predefinedMode">Modo predefinido</div>
+        <div class="mode-actions" id="modeSpeedButtons">
+          <button type="button" class="preset mode-btn" data-original-speed="1">HI</button>
+          <button type="button" class="preset mode-btn" data-original-speed="2">LOW</button>
+        </div>
+        <div class="mode-actions temp-actions" id="modeTempButtons">
+          <button type="button" class="preset mode-btn" data-original-temp="0" data-i18n="tempOff">Temp OFF</button>
+          <button type="button" class="preset mode-btn" data-original-temp="60">60 F</button>
+          <button type="button" class="preset mode-btn" data-original-temp="65">65 F</button>
+          <button type="button" class="preset mode-btn" data-original-temp="70">70 F</button>
+          <button type="button" class="preset mode-btn" data-original-temp="75">75 F</button>
+          <button type="button" class="preset mode-btn" data-original-temp="80">80 F</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="card glass direction-card span-2" id="directionCard" data-view="home">
+      <div class="eyebrow"><strong data-i18n="directions">Posicion de sliders</strong><span>Exhaust · OFF · Intake</span></div>
+      <div class="direction-grid">
+        <div class="direction-row">
+          <div class="direction-label">A</div>
+          <div class="segmented" id="segA"><span class="seg-pill" data-dir="A">Exhaust</span><span class="seg-pill" data-dir="OFF">OFF</span><span class="seg-pill" data-dir="B">Intake</span></div>
+        </div>
+        <div class="direction-row">
+          <div class="direction-label">B</div>
+          <div class="segmented" id="segB"><span class="seg-pill" data-dir="A">Exhaust</span><span class="seg-pill" data-dir="OFF">OFF</span><span class="seg-pill" data-dir="B">Intake</span></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card glass button-card view-hidden" id="buttonCard" data-view="system">
+      <div class="eyebrow"><strong data-i18n="physicalButton">Boton fisico</strong><span>GPIO8</span></div>
+      <div class="mini-metric">
+        <div><strong id="buttonState">--</strong><small id="buttonCounts">--</small></div>
+        <label class="switch"><input id="buttonEnabled" type="checkbox"> <span data-i18n="active">Activo</span></label>
+      </div>
+    </article>
+
+    <article class="card glass health-card view-hidden" id="healthCard" data-view="system">
+      <div class="eyebrow"><strong data-i18n="deviceHealth">Salud del dispositivo</strong><span id="healthTag">--</span></div>
+      <div class="mini-metric">
+        <div><strong id="fireState">--</strong><small id="fireSub">--</small></div>
+        <div class="metric-badge">✓</div>
+      </div>
+    </article>
+
+    <article class="card glass wifi-card span-2 view-hidden" id="wifiCard" data-view="system">
+      <div class="eyebrow"><strong data-i18n="wifi">Local Wi-Fi</strong><span id="wifiStateTag">--</span></div>
+      <div class="inline-actions">
+        <button class="action-btn subtle" id="wifiScanBtn" type="button"><span>⌁</span><span data-i18n="scanNetworks">Scan networks</span></button>
+      </div>
+      <div class="wifi-network-list" id="wifiNetworkList"><span class="wifi-empty" data-i18n="scanToSelect">Scan to select a network</span></div>
+      <div class="field-grid">
+        <div class="field"><label for="staSsid" data-i18n="selectedNetwork">Selected network</label><input class="text-input" id="staSsid" type="text" autocomplete="off"></div>
+        <div class="field"><label for="staPass" data-i18n="password">Password</label><input class="text-input" id="staPass" type="password" autocomplete="new-password"></div>
+      </div>
+      <div class="inline-actions"><button class="action-btn good" id="saveWifi" type="button" data-i18n="connectDhcp">Connect with DHCP</button></div>
+      <div class="meta-row" style="margin-top:10px">
+        <span>AP <b id="wifiApIp">192.168.4.1</b></span>
+        <span>STA <b id="wifiStaIp">--</b></span>
+        <span>RSSI <b id="wifiRssi">--</b></span>
+      </div>
+      <div class="static-ip-controls disabled" id="staticIpControls" style="margin-top:12px">
+        <div class="field"><label for="staticLastOctet" data-i18n="staticIp">Static IP</label><div class="ip-compose"><span class="ip-prefix mono" id="staticIpPrefix">--.</span><input class="number" id="staticLastOctet" type="number" min="2" max="254" value="150" step="1" inputmode="numeric"></div></div>
+        <div class="inline-actions"><button class="action-btn subtle" id="saveStaticIp" type="button" disabled><span>⌖</span><span data-i18n="setStaticIp">Set static IP</span></button></div>
+      </div>
+      <div class="progress-note" id="wifiNote">--</div>
+    </article>
+
+    <article class="card glass ota-card span-2 view-hidden" id="otaCard" data-view="system">
+      <div class="eyebrow"><strong data-i18n="ota">Remote update</strong><span id="otaReadyTag">--</span></div>
+      <div class="inline-actions"><button class="icon-btn" id="adminStatus" type="button" aria-label="Refresh OTA status" title="Refresh OTA status">↻</button></div>
+      <div class="field" style="margin-top:12px"><label for="fwFile" data-i18n="uploadFw">Upload firmware</label><input class="file-input" id="fwFile" type="file" accept=".bin,application/octet-stream"></div>
+      <div class="inline-actions"><button class="action-btn danger" id="uploadFw" type="button"><span>↑</span><span data-i18n="uploadFw">Upload firmware</span></button></div>
+      <div class="field" style="margin-top:12px"><label for="fsFile" data-i18n="uploadFs">Upload LittleFS</label><input class="file-input" id="fsFile" type="file" accept=".bin,application/octet-stream"></div>
+      <div class="inline-actions"><button class="action-btn danger" id="uploadFs" type="button"><span>↑</span><span data-i18n="uploadFs">Upload LittleFS</span></button></div>
+      <div class="progress-shell"><div class="progress-fill" id="otaProgress"></div></div>
+      <div class="progress-note" id="otaNote">Idle</div>
+    </article>
+
+    <article class="card glass global-led-card span-2" id="globalLedCard" data-view="home">
+      <div class="eyebrow"><strong data-i18n="globalColor">Color global</strong><span>LED 1-7</span></div>
+      <label class="switch"><input id="lightsOn" type="checkbox"> <span data-i18n="lightsOn">Luces ON</span></label>
+      <div class="color-box" style="margin-top:11px">
+        <input type="color" id="allColor" value="#26A269" aria-label="Color global">
+        <div class="color-meta">
+          <div class="chip"><b data-i18n="code">Codigo</b><span class="mono" id="allHex">#26A269</span></div>
+          <div class="chip"><b data-i18n="name">Nombre</b><span id="allName">verde</span></div>
+          <div class="chip"><b>RGB</b><span class="mono" id="allRgb">38,162,105</span></div>
+        </div>
+      </div>
+	      <div class="inline-actions">
+	        <button class="action-btn good" id="saveAllBtn" type="button"><span>◆</span><span data-i18n="save">Guardar</span></button>
+	      </div>
+	      <div class="dimmer-block">
+	        <div class="eyebrow dimmer-head"><strong data-i18n="dimmer">Dimmer</strong><span id="ledDimmerValue">100%</span></div>
+	        <input class="range" id="ledDimmerRange" type="range" min="0" max="100" value="100" step="1" aria-label="LED dimmer">
+	      </div>
+	    </article>
+
+    <article class="card glass led-card span-2" id="ledCard" data-view="home">
+      <div class="eyebrow"><strong>LED 1-7</strong><span data-i18n="tapToggle">toca para alternar</span></div>
+      <div class="leds" id="leds"></div>
+      <div class="inline-actions">
+        <button class="action-btn good" id="functionLedsBtn" type="button"><span>●</span><span data-i18n="functionLeds">Funcion actual</span></button>
+        <button class="action-btn" id="saveLedPaletteBtn" type="button"><span>◆</span><span data-i18n="savePalette">Guardar LED 1-7</span></button>
+      </div>
+    </article>
+
+    <article class="card glass activity-card span-2 view-hidden" id="activityCard" data-view="system">
+      <div class="eyebrow"><strong data-i18n="recentActivity">Actividad reciente</strong><span data-i18n="live">en vivo</span></div>
+      <div class="activity" id="activityList"></div>
+    </article>
+
+    <article class="card glass expandable system-card span-2 view-hidden" id="systemCard" tabindex="0" data-detail="system" data-view="system">
+      <div class="eyebrow"><strong data-i18n="systemSafety">Seguridad del sistema</strong><span id="systemTag">--</span></div>
+      <div class="module-list" id="moduleList"></div>
+    </article>
+  </section>
+
+  <p class="footer-note" id="uiVersion">UI glass · LittleFS</p>
+</main>
+
+<div class="detail-overlay" id="detailOverlay" aria-hidden="true">
+  <section class="detail glass" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="detail-head">
+      <button class="back-btn" id="detailBack" type="button" aria-label="Volver">←</button>
+      <h2 id="detailTitle">Detalle</h2>
+      <button class="back-btn" id="detailClose" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const FALLBACK_LEDS=[
+    {index:0,label:"LOW",r:38,g:162,b:105,enabled:true},
+    {index:1,label:"60F",r:38,g:162,b:105,enabled:true},
+    {index:2,label:"65F",r:38,g:162,b:105,enabled:true},
+    {index:3,label:"70F",r:38,g:162,b:105,enabled:true},
+    {index:4,label:"HIGH",r:38,g:162,b:105,enabled:true},
+    {index:5,label:"75F",r:38,g:162,b:105,enabled:true},
+    {index:6,label:"80F",r:38,g:162,b:105,enabled:true}
+  ];
+  const state={
+    theme:readLocal("fanTheme","light"),
+    lang:readLocal("fanLang","en"),
+    config:{lightsOn:true,ledDimmerPercent:100,buttonEnabled:true,customSpeedEnabled:false,customSpeedPercent:100,ledDataPin:21,leds:FALLBACK_LEDS.map(x=>Object.assign({},x))},
+    status:null,
+    activity:[],
+    detail:null,
+    view:"home",
+    loggedIn:false,
+    lastSync:null,
+    globalDirtyUntil:0,
+    dimmerDirtyUntil:0,
+    ledDirtyUntil:[0,0,0,0,0,0,0],
+    ledPickerHoldUntil:0,
+    speedDirtyUntil:0,
+    modeDirtyUntil:0,
+    scheduleDirtyUntil:0,
+    originalSpeed:Number(readLocal("fanOriginalSpeed","1"))||1,
+    originalSetpointF:Number(readLocal("fanOriginalSetpoint","0"))||0,
+    sliderInputEnabled:readLocal("fanSliderEnabled","0")==="1",
+    adminUser:"admin",
+    adminPass:"admin",
+    timerSpeed:Number(readLocal("fanTimerSpeed","1"))||1,
+    scheduleSelectedDay:Math.max(0,Math.min(6,Number(readLocal("fanScheduleDay","0"))||0)),
+    scheduleEditorMode:1,
+    lastScheduleLog:"",
+    selectedWifiSsid:""
+  };
+  const T={
+    es:{
+      subtitle:"by Ivves",themeShort:"Noche",themeDay:"Dia",
+      navHome:"Inicio",navControl:"Control",navActivity:"Actividad",navSystem:"Sistema",
+      loginTitle:"Acceso al ventilador",loginHint:"Ingresa para abrir los controles.",rememberLogin:"Recordar ingreso",signIn:"Ingresar",loginError:"Usuario o contrasena incorrectos",
+      sync:"Sincronizacion",temperature:"Temperatura actual",setpoint:"Setpoint",time:"Hora",local:"Local",
+      fansSync:"Ventiladores sincronizados",fanA:"Ventilador A",fanB:"Ventilador B",
+      sharedSpeed:"Velocidad comun",sliderState:"slider fisico",syncSpeed:"Velocidad sincronizada",
+      bothFans:"ambos ventiladores",estimated:"estimado",directions:"Posicion de sliders",
+      useSlider:"Usar slider",mode:"Modo",noTemp:"Sin temperatura",apply:"Aplicar",
+      predefinedMode:"Modo predefinido",tempOff:"Temp OFF",functionLeds:"Funcion actual",
+      boardLed:"LED rojo ESP",
+      powerOnHi:"POWER ON (HI)",fanOn:"Encender",fanOff:"Apagar",history:"Ultimos 7 dias",noHistory:"Sin historico",
+      physicalButton:"Boton fisico",active:"Activo",deviceHealth:"Salud del dispositivo",
+      globalColor:"Color global",lightsOn:"Luces ON",dimmer:"Dimmer",code:"Codigo",name:"Nombre",
+      preview:"Probar",save:"Guardar",indicators:"Indicadores",tapToggle:"toca para alternar",
+      recentActivity:"Actividad reciente",live:"en vivo",systemSafety:"Seguridad del sistema",
+      powerOff:"Apagar",connected:"Conectado",apiError:"API error",offline:"Sin conexion",
+      detailTemp:"Detalle de temperatura",detailFans:"Detalle de ventiladores",detailSpeed:"Control de velocidad",
+      detailDirections:"Detalle de sliders",detailLeds:"LED 1-7",detailGlobalLed:"Color global",
+      detailTime:"Hora y programacion",detailActivity:"Actividad reciente",detailSystem:"Estado del sistema",
+      current:"Actual",target:"Objetivo",sensor:"Sensor",firmware:"Firmware",errors:"Errores",
+      sharedRule:"Velocidad y TRIAC son comunes para A y B. Posicion A es Exhaust y posicion B es Intake.",
+      startBoost:"Boost de arranque",modules:"Modulos",buttonEnabled:"Boton habilitado",
+      activityPower:"Ventiladores apagados",activitySpeed:"Velocidad sincronizada",activityMode:"Modo aplicado",
+      activityLed:"LED alternado",activityColor:"Color guardado",activityTheme:"Tema cambiado",
+      activityLang:"Idioma cambiado",activityLights:"Luces",activityButton:"Boton fisico",
+      wifi:"Wi-Fi local",ota:"Actualizacion remota",admin:"Admin",username:"Usuario",password:"Contrasena",
+      connect:"Conectar",uploadFw:"Subir firmware",uploadFs:"Subir LittleFS",changeAdmin:"Cambiar admin",
+      hostname:"Hostname",staticIp:"IP estatica",gateway:"Gateway",subnet:"Subnet",dns:"DNS",
+      adminHint:"Protegido por admin:admin hasta que lo cambies.",scanNetworks:"Buscar redes",scanToSelect:"Busca para seleccionar una red",selectedNetwork:"Red seleccionada",connectDhcp:"Conectar por DHCP",setStaticIp:"Fijar IP estatica",scanning:"Buscando redes",noNetworks:"No se encontraron redes",connectingWifi:"Conectando",wifiConnected:"Conectado",wifiStaticSaved:"IP estatica guardada"
+      ,timeSchedule:"Hora y programacion",weeklySchedule:"Programacion",weekly:"Semanal",daily:"Diario",sameDay:"Mismo dia",overnight:"Nocturno",invalidSchedule:"Inicio y termino no pueden ser iguales",scheduleSpeed:"Velocidad programada",scheduleDimmer:"Dimmer programado",startTime:"Inicio",endTime:"Termino",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutos",remaining:"Restante",savePalette:"Guardar LED 1-7",logout:"Salir"
+    },
+    en:{
+      subtitle:"by Ivves",themeShort:"Night",themeDay:"Day",
+      navHome:"Home",navControl:"Control",navActivity:"Activity",navSystem:"System",
+      loginTitle:"Fan access",loginHint:"Sign in to open the controls.",rememberLogin:"Remember login",signIn:"Sign in",loginError:"Wrong username or password",
+      sync:"Sync",temperature:"Current temperature",setpoint:"Setpoint",time:"Time",local:"Local",
+      fansSync:"Synchronized fans",fanA:"Fan A",fanB:"Fan B",
+      sharedSpeed:"Shared speed",sliderState:"physical slider",syncSpeed:"Synchronized speed",
+      bothFans:"both fans",estimated:"estimated",directions:"Slider position",
+      useSlider:"Use slider",mode:"Mode",noTemp:"No temperature",apply:"Apply",
+      predefinedMode:"Predefined mode",tempOff:"Temp OFF",functionLeds:"Current function",
+      boardLed:"ESP red LED",
+      powerOnHi:"POWER ON (HI)",fanOn:"ON",fanOff:"OFF",history:"Last 7 days",noHistory:"No history",
+      physicalButton:"Physical button",active:"Active",deviceHealth:"Device health",
+      globalColor:"Global color",lightsOn:"Lights ON",dimmer:"Dimmer",code:"Code",name:"Name",
+      preview:"Preview",save:"Save",indicators:"Indicators",tapToggle:"tap to toggle",
+      recentActivity:"Recent activity",live:"live",systemSafety:"System safety",
+      powerOff:"Power off",connected:"Connected",apiError:"API error",offline:"Offline",
+      detailTemp:"Temperature details",detailFans:"Fan details",detailSpeed:"Speed control",
+      detailDirections:"Slider details",detailLeds:"LED 1-7",detailGlobalLed:"Global color",
+      detailTime:"Time and Schedule",detailActivity:"Recent activity",detailSystem:"System status",
+      current:"Current",target:"Target",sensor:"Sensor",firmware:"Firmware",errors:"Errors",
+      sharedRule:"Speed and TRIAC command are shared by A and B. Position A is Exhaust and position B is Intake.",
+      startBoost:"Start boost",modules:"Modules",buttonEnabled:"Button enabled",
+      activityPower:"Fans powered off",activitySpeed:"Synchronized speed",activityMode:"Mode applied",
+      activityLed:"LED toggled",activityColor:"Color saved",activityTheme:"Theme changed",
+      activityLang:"Language changed",activityLights:"Lights",activityButton:"Physical button",
+      wifi:"Local Wi-Fi",ota:"Remote update",admin:"Admin",username:"Username",password:"Password",
+      connect:"Connect",uploadFw:"Upload firmware",uploadFs:"Upload LittleFS",changeAdmin:"Change admin",
+      hostname:"Hostname",staticIp:"Static IP",gateway:"Gateway",subnet:"Subnet",dns:"DNS",
+      adminHint:"Protected by admin:admin until you change it.",scanNetworks:"Scan networks",scanToSelect:"Scan to select a network",selectedNetwork:"Selected network",connectDhcp:"Connect with DHCP",setStaticIp:"Set static IP",scanning:"Scanning networks",noNetworks:"No networks found",connectingWifi:"Connecting",wifiConnected:"Connected",wifiStaticSaved:"Static IP saved"
+      ,timeSchedule:"Time and Schedule",weeklySchedule:"Schedule",weekly:"Weekly",daily:"Daily",sameDay:"Same day",overnight:"Overnight",invalidSchedule:"Start and End cannot match",scheduleSpeed:"Scheduled speed",scheduleDimmer:"Scheduled dimmer",startTime:"Start",endTime:"End",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutes",remaining:"Remaining",savePalette:"Save LED 1-7",logout:"Logout"
+    }
+  };
+  const $=sel=>document.querySelector(sel);
+  const $$=sel=>Array.from(document.querySelectorAll(sel));
+  const apiBase=location.protocol+"//"+location.host;
+  let speedTimer=0;
+  let speedSaveTimer=0;
+  let globalColorTimer=0;
+  let dimmerTimer=0;
+  let scheduleSaveTimer=0;
+  const ledColorTimers=[];
+  let refreshBusy=false;
+  let adminPollTimer=0;
+  let wifiScanTimer=0;
+  let wifiConnectTimer=0;
+
+  function readLocal(key,fallback){try{return localStorage.getItem(key)||fallback}catch(_){return fallback}}
+  function writeLocal(key,value){try{localStorage.setItem(key,value)}catch(_){}}
+  function tr(key){return (T[state.lang]&&T[state.lang][key])||key}
+  function toast(msg){
+    const el=$("#toast");
+    el.textContent=msg;
+    el.classList.add("show");
+    clearTimeout(window.__toast);
+    window.__toast=setTimeout(()=>el.classList.remove("show"),1800);
+  }
+  function headers(extra){
+    return Object.assign({},extra||{});
+  }
+  function requireLoginMessage(){
+    state.loggedIn=false;
+    showLogin();
+  }
+  function apiGet(path){
+    const url=apiBase+path;
+    return fetch(url,{credentials:"same-origin",headers:headers()}).then(r=>{
+      if(r.status===401) requireLoginMessage();
+      if(!r.ok) throw new Error(path+" "+r.status);
+      return r.json();
+    });
+  }
+  function apiPost(path,obj){
+    const url=apiBase+path;
+    const body=JSON.stringify(obj||{});
+    return fetch(url,{method:"POST",credentials:"same-origin",headers:headers({"Content-Type":"application/json"}),body}).then(r=>{
+      if(r.status===401) requireLoginMessage();
+      if(!r.ok) throw new Error(path+" "+r.status);
+      return r.json();
+    });
+  }
+  function showLogin(){
+    const screen=$("#loginScreen");
+    if(screen) screen.classList.remove("hidden");
+  }
+  function hideLogin(){
+    const screen=$("#loginScreen");
+    if(screen) screen.classList.add("hidden");
+  }
+  function storedLogin(){
+    return {
+      remember:readLocal("fanRememberLogin","0")==="1",
+      user:readLocal("fanLoginUser",""),
+      pass:readLocal("fanLoginPass","")
+    };
+  }
+  function setLoginFormFromStore(){
+    const saved=storedLogin();
+    $("#loginUser").value=saved.remember?saved.user:"";
+    $("#loginPass").value=saved.remember?saved.pass:"";
+    $("#rememberLogin").checked=saved.remember;
+  }
+  function loginWithForm(){
+    const user=$("#loginUser").value.trim();
+    const pass=$("#loginPass").value;
+    const remember=$("#rememberLogin").checked;
+    $("#loginError").textContent="";
+    return fetch(apiBase+"/api/login",{
+      method:"POST",
+      credentials:"same-origin",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({user:user,pass:pass,remember:remember?1:0})
+    }).then(r=>{
+      if(!r.ok) throw new Error("login");
+      return r.json();
+    }).then(()=>{
+      state.loggedIn=true;
+      if(remember){
+        writeLocal("fanRememberLogin","1");
+        writeLocal("fanLoginUser",user);
+        writeLocal("fanLoginPass",pass);
+      }else{
+        writeLocal("fanRememberLogin","0");
+        try{localStorage.removeItem("fanLoginUser");localStorage.removeItem("fanLoginPass")}catch(_){}
+      }
+      hideLogin();
+      return refreshAll().then(syncTimeIfSafe);
+    }).catch(()=>{
+      state.loggedIn=false;
+      $("#loginError").textContent=tr("loginError");
+      showLogin();
+    });
+  }
+  function checkSession(){
+    return fetch(apiBase+"/api/session",{credentials:"same-origin"}).then(r=>r.json()).then(data=>{
+      state.loggedIn=!!data.loggedIn;
+      if(state.loggedIn){
+        hideLogin();
+        return refreshAll().then(syncTimeIfSafe);
+      }
+      const saved=storedLogin();
+      if(saved.remember&&saved.user&&saved.pass) return loginWithForm();
+      showLogin();
+      return null;
+    }).catch(()=>{
+      const saved=storedLogin();
+      if(saved.remember&&saved.user&&saved.pass) return loginWithForm();
+      showLogin();
+      return null;
+    });
+  }
+  function adminHeaders(extra){
+    const h=Object.assign({},extra||{});
+    h.Authorization="Basic "+btoa(state.adminUser+":"+state.adminPass);
+    return h;
+  }
+  function adminGet(path){
+    return fetch(apiBase+path,{credentials:"same-origin",headers:adminHeaders()}).then(r=>{
+      if(!r.ok) throw new Error(path+" "+r.status);
+      return r.json();
+    });
+  }
+  function adminPost(path,obj){
+    return fetch(apiBase+path,{method:"POST",credentials:"same-origin",headers:adminHeaders({"Content-Type":"application/json"}),body:JSON.stringify(obj||{})}).then(r=>{
+      if(!r.ok) throw new Error(path+" "+r.status);
+      return r.json();
+    });
+  }
+  function clampPct(v){
+    v=Math.round(Number(v)||100);
+    return Math.max(85,Math.min(100,v));
+  }
+  function rgbToHex(r,g,b){
+    return "#"+[r,g,b].map(v=>Math.max(0,Math.min(255,Number(v)||0)).toString(16).padStart(2,"0")).join("").toUpperCase();
+  }
+  function hexToRgb(hex){
+    const v=(hex||"#000000").replace("#","");
+    return {r:parseInt(v.slice(0,2),16)||0,g:parseInt(v.slice(2,4),16)||0,b:parseInt(v.slice(4,6),16)||0};
+  }
+  function colorName(rgb){
+    const r=rgb.r/255,g=rgb.g/255,b=rgb.b/255;
+    const max=Math.max(r,g,b),min=Math.min(r,g,b);
+    const d=max-min,v=max,s=max===0?0:d/max;
+    if(v<.08) return state.lang==="es"?"negro":"black";
+    if(s<.09) return v>.88?(state.lang==="es"?"blanco":"white"):(v>.45?(state.lang==="es"?"gris claro":"light gray"):(state.lang==="es"?"gris":"gray"));
+    let h=0;
+    if(d!==0){
+      if(max===r) h=60*(((g-b)/d)%6);
+      else if(max===g) h=60*((b-r)/d+2);
+      else h=60*((r-g)/d+4);
+    }
+    if(h<0) h+=360;
+    const es=state.lang==="es";
+    if(h<12||h>=346) return es?"rojo":"red";
+    if(h<28) return es?"coral":"coral";
+    if(h<44) return es?"naranja":"orange";
+    if(h<56) return es?"ambar":"amber";
+    if(h<70) return es?"amarillo":"yellow";
+    if(h<145) return es?"verde":"green";
+    if(h<175) return es?"menta":"mint";
+    if(h<205) return es?"cyan":"cyan";
+    if(h<250) return es?"azul":"blue";
+    if(h<282) return es?"violeta":"violet";
+    if(h<318) return es?"magenta":"magenta";
+    return es?"rosado":"pink";
+  }
+  function colorMeta(hex){
+    const rgb=hexToRgb(hex);
+    return {hex:hex.toUpperCase(),rgb,name:colorName(rgb),rgbText:rgb.r+","+rgb.g+","+rgb.b};
+  }
+  function fmtTime(d){
+    let h=d.getHours();
+    const suffix=h>=12?"PM":"AM";
+    h=h%12||12;
+    return h+":"+String(d.getMinutes()).padStart(2,"0")+" "+suffix;
+  }
+  function hourLabel(hour){
+    hour=Math.max(0,Math.min(23,Number(hour)||0));
+    const suffix=hour>=12?"PM":"AM";
+    const h=hour%12||12;
+    return h+":00 "+suffix;
+  }
+  function fmtDate(d){
+    return new Intl.DateTimeFormat(state.lang==="es"?"es-ES":"en-US",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(d);
+  }
+  function estimateVac(percent){
+    percent=Number(percent)||0;
+    if(percent<=0) return 0;
+    return Math.round(108+((Math.max(85,Math.min(100,percent))-85)*12/15));
+  }
+  function modeToOriginal(mode){
+    const m=Number(mode)||0;
+    if(m>=8&&m<=12) return {speed:2,setpoint:[60,65,70,75,80][m-8]};
+    if(m>=3&&m<=7) return {speed:1,setpoint:[60,65,70,75,80][m-3]};
+    if(m===2) return {speed:2,setpoint:0};
+    return {speed:1,setpoint:0};
+  }
+  function modeIsOriginal(mode){
+    const m=Number(mode)||0;
+    return m>=1&&m<=12;
+  }
+  function fanModeOn(status){
+    const m=Number((status||state.status||{}).mode)||0;
+    return m>=1&&m<=13;
+  }
+  function selectedOriginal(){
+    const speed=Number(state.originalSpeed)===2?2:1;
+    const setpoint=[0,60,65,70,75,80].includes(Number(state.originalSetpointF))?Number(state.originalSetpointF):0;
+    return {speed,setpoint};
+  }
+  function percentForOriginalSpeed(speed){
+    return Number(speed)===2?85:100;
+  }
+  function originalLabel(original){
+    original=original||selectedOriginal();
+    return (original.speed===2?"LOW":"HI")+" "+(original.setpoint?original.setpoint+"F":"TEMP OFF");
+  }
+  function syncModeButtons(){
+    const original=selectedOriginal();
+    $$("[data-original-speed]").forEach(btn=>{
+      btn.classList.toggle("active",Number(btn.dataset.originalSpeed)===original.speed);
+    });
+    $$("[data-original-temp]").forEach(btn=>{
+      btn.classList.toggle("active",Number(btn.dataset.originalTemp)===original.setpoint);
+    });
+  }
+  function setSelectedOriginal(speed,setpoint,applyNow){
+    state.originalSpeed=Number(speed)===2?2:1;
+    state.originalSetpointF=[0,60,65,70,75,80].includes(Number(setpoint))?Number(setpoint):0;
+    state.modeDirtyUntil=Date.now()+5000;
+    state.sliderInputEnabled=false;
+    writeLocal("fanOriginalSpeed",String(state.originalSpeed));
+    writeLocal("fanOriginalSetpoint",String(state.originalSetpointF));
+    writeLocal("fanSliderEnabled","0");
+    syncSliderEnabledState();
+    setSpeedSelection(percentForOriginalSpeed(state.originalSpeed));
+    syncModeButtons();
+    $("#setpointText").textContent=state.originalSetpointF?(state.originalSetpointF+"°F / "+Math.round((state.originalSetpointF-32)*5/9)+"°C"):(state.lang==="es"?"sin temperatura":"no temperature");
+    if(applyNow&&fanModeOn()) return applyFan(false,false);
+    toast(originalLabel());
+    log(originalLabel());
+    return Promise.resolve();
+  }
+  function setDot(id,kind){
+    const el=$(id);
+    if(!el) return;
+    el.className="dot"+(kind?(" "+kind):"");
+  }
+  function log(message){
+    const now=new Date();
+    state.activity.unshift({time:fmtTime(now),message});
+    state.activity=state.activity.slice(0,8);
+    renderActivity();
+  }
+  function initActivity(){
+    const now=new Date();
+    state.activity=[
+      {time:fmtTime(new Date(now-60000)),message:state.lang==="es"?"Interfaz cargada":"Interface loaded"},
+      {time:fmtTime(new Date(now-180000)),message:state.lang==="es"?"Velocidad A/B sincronizada":"A/B speed synchronized"},
+      {time:fmtTime(new Date(now-300000)),message:state.lang==="es"?"GPIO21 LED / GPIO47 MOC":"GPIO21 LED / GPIO47 MOC"}
+    ];
+  }
+  function renderTranslations(){
+    $$("[data-i18n]").forEach(el=>{
+      const key=el.dataset.i18n;
+      if(T[state.lang][key]) el.textContent=T[state.lang][key];
+    });
+    $("#themeToggle [data-i18n='themeShort']").textContent=state.lang==="es"?(state.theme==="dark"?"Noche":"Dia"):(state.theme==="dark"?"Night":"Day");
+    $("#langToggle").textContent=state.lang.toUpperCase();
+    $("#langToggle").setAttribute("aria-label",state.lang==="es"?"Idioma actual ES":"Current language EN");
+    document.documentElement.lang=state.lang;
+    updateGlobalColorMeta();
+  }
+  function renderClock(){
+    const d=new Date();
+    $("#clock").textContent=fmtTime(d);
+    $("#dateText").textContent=fmtDate(d);
+    const dc=$("#detailClock");
+    const dd=$("#detailDateText");
+    if(dc) dc.textContent=fmtTime(d);
+    if(dd) dd.textContent=fmtDate(d);
+    updateTimerCountdownDisplay();
+  }
+  function setTheme(theme){
+    state.theme=theme==="light"?"light":"dark";
+    document.body.dataset.theme=state.theme;
+    writeLocal("fanTheme",state.theme);
+    renderTranslations();
+  }
+  function showView(view){
+    state.view=view==="system"?"system":"home";
+    $$("[data-view]").forEach(el=>el.classList.toggle("view-hidden",el.dataset.view!==state.view));
+    $$("[data-view-target]").forEach(btn=>btn.classList.toggle("active",btn.dataset.viewTarget===state.view));
+    if(state.view==="system"&&state.loggedIn) updateAdminStatus().catch(()=>{});
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  function sliderRaw(v){
+    v=String(v||"OFF").toUpperCase();
+    if(v==="INVALID") return "INVALID";
+    if(v==="A"||v==="B") return v;
+    return "OFF";
+  }
+  function sliderLabel(v){
+    const raw=sliderRaw(v);
+    if(raw==="A") return "Exhaust";
+    if(raw==="B") return "Intake";
+    return raw;
+  }
+  function sliderOn(v){
+    const raw=sliderRaw(v);
+    return raw!=="OFF"&&raw!=="INVALID";
+  }
+  function renderSegments(id,value){
+    const label=sliderRaw(value);
+    $("#"+id).querySelectorAll(".seg-pill").forEach(p=>{
+      p.classList.toggle("active",p.dataset.dir===label);
+      p.classList.toggle("bad",label==="INVALID"&&p.dataset.dir==="OFF");
+    });
+  }
+  function syncSpeedControls(pct){
+    pct=clampPct(pct);
+    if(document.activeElement!==$("#speedRange")&&document.activeElement!==$("#speedNumber")){
+      $("#speedRange").value=pct;
+      $("#speedNumber").value=pct;
+    }
+    $("#speedValue").textContent=pct+"%";
+    $("#voltageValue").textContent=estimateVac(pct)+" VAC";
+    $$("#presets .preset").forEach(p=>p.classList.toggle("active",Math.abs(Number(p.dataset.speed)-pct)<=1));
+  }
+  function speedCardActive(){
+    const s=state.status||{};
+    return fanModeOn(s);
+  }
+  function syncSliderEnabledState(){
+    const enabled=state.sliderInputEnabled;
+    $("#customEnabled").checked=enabled;
+    $("#speedControlRow").classList.toggle("dim",!enabled);
+    $("#speedRange").disabled=!enabled;
+    $("#speedNumber").disabled=!enabled;
+    syncModeButtons();
+  }
+  function setSpeedSelection(pct){
+    pct=clampPct(pct);
+    state.speedDirtyUntil=Date.now()+5000;
+    state.config.customSpeedPercent=pct;
+    $("#speedRange").value=pct;
+    $("#speedNumber").value=pct;
+    syncSpeedControls(pct);
+  }
+  function normalizeLeds(leds){
+    const src=(leds&&leds.length)?leds:FALLBACK_LEDS;
+    return src.map((led,i)=>Object.assign({},FALLBACK_LEDS[i]||{},led,{enabled:led.enabled!==false}));
+  }
+  function sequenceLedActive(i){
+    const s=state.status||{};
+    const preview=s.ledPreview||{};
+    if(preview.active){
+      if(Number(preview.mode)===2) return true;
+      if(Number(preview.mode)===1) return Number(preview.index)===i;
+    }
+    const mode=Number(s.mode)||0;
+    if(mode===2) return i===0;
+    if(mode===1) return i===4;
+    if(mode>=3&&mode<=7) return i===4 || i===[1,2,3,5,6][mode-3];
+    if(mode>=8&&mode<=12) return i===0 || i===[1,2,3,5,6][mode-8];
+    if(mode===13) return i===0 || i===4;
+    return false;
+  }
+  function ledIsLit(led,i){
+    if(led&&typeof led.lit==="boolean") return led.lit;
+    return !!(led&&led.enabled!==false&&state.config.lightsOn!==false&&Number(state.config.ledDimmerPercent)>0&&sequenceLedActive(i));
+  }
+  function holdLedPicker(ms){
+    state.ledPickerHoldUntil=Math.max(state.ledPickerHoldUntil,Date.now()+(ms||30000));
+  }
+  function activeLedPicker(){
+    const el=document.activeElement;
+    return Date.now()<state.ledPickerHoldUntil || !!(el&&el.type==="color"&&/^d?LedColor\d+$/.test(el.id||""));
+  }
+  function renderLedDots(force){
+    if(!force&&activeLedPicker()) return;
+    const wrap=$("#leds");
+    wrap.innerHTML="";
+    state.config.leds.forEach((led,i)=>{
+      const hex=rgbToHex(led.r,led.g,led.b);
+      const enabled=led.enabled!==false;
+      const lit=ledIsLit(led,i);
+      const div=document.createElement("div");
+      div.className="led";
+      div.innerHTML='<button type="button" class="led-dot '+(lit?"on lit":"off")+'" style="background:'+hex+';--led-glow:'+hex+'66" aria-label="LED '+(i+1)+' '+led.label+'" aria-pressed="'+(enabled?"true":"false")+'"></button><span>'+(i+1)+'</span><small>'+led.label+'</small><div class="led-mini-tools"><input type="color" id="ledColor'+i+'" value="'+hex+'" aria-label="LED '+(i+1)+' color"></div>';
+      div.querySelector(".led-dot").addEventListener("click",e=>{
+        e.stopPropagation();
+        toggleLed(i);
+      });
+      const colorInput=div.querySelector("#ledColor"+i);
+      ["pointerdown","focus","click"].forEach(evt=>colorInput.addEventListener(evt,e=>{
+        e.stopPropagation();
+        holdLedPicker(45000);
+      }));
+      const onColorChange=e=>{
+        e.stopPropagation();
+        holdLedPicker(2500);
+        changeLedColor(i,e.target.value,false);
+      };
+      colorInput.addEventListener("input",onColorChange);
+      colorInput.addEventListener("change",onColorChange);
+      wrap.appendChild(div);
+    });
+  }
+  function syncLedDetail(i){
+    const led=state.config.leds[i];
+    if(!led) return;
+    const enabled=led.enabled!==false;
+    const checkbox=$("#dLedEnabled"+i);
+    if(checkbox) checkbox.checked=enabled;
+    const dot=document.querySelector('[data-toggle-led="'+i+'"]');
+    if(dot){
+      const lit=ledIsLit(led,i);
+      dot.classList.toggle("on",lit);
+      dot.classList.toggle("off",!lit);
+      dot.classList.toggle("lit",lit);
+      dot.setAttribute("aria-pressed",enabled?"true":"false");
+    }
+  }
+  function setLedEnabledLocal(i,enabled){
+    if(!state.config.leds[i]) state.config.leds[i]=Object.assign({},FALLBACK_LEDS[i]);
+    state.config.leds[i].enabled=!!enabled;
+    state.config.leds[i].lit=!!enabled&&state.config.lightsOn!==false&&Number(state.config.ledDimmerPercent)>0&&sequenceLedActive(i);
+    renderLedDots(true);
+    syncLedDetail(i);
+  }
+  function setLedColorLocal(i,hex){
+    if(!state.config.leds[i]) state.config.leds[i]=Object.assign({},FALLBACK_LEDS[i]);
+    const rgb=hexToRgb(hex);
+    Object.assign(state.config.leds[i],rgb);
+    state.config.leds.forEach((led,j)=>{
+      led.lit=j===i&&state.config.lightsOn!==false&&Number(state.config.ledDimmerPercent)>0&&led.enabled!==false;
+    });
+    state.ledDirtyUntil[i]=Date.now()+5000;
+    const nextHex=rgbToHex(rgb.r,rgb.g,rgb.b);
+    const input=$("#ledColor"+i);
+    if(input&&document.activeElement!==input) input.value=nextHex;
+    const box=input?input.closest(".led"):null;
+    const dot=box?box.querySelector(".led-dot"):null;
+    if(dot){
+      dot.style.background=nextHex;
+      dot.style.setProperty("--led-glow",nextHex+"66");
+      const lit=ledIsLit(state.config.leds[i],i);
+      dot.classList.toggle("on",lit);
+      dot.classList.toggle("off",!lit);
+      dot.classList.toggle("lit",lit);
+    }
+  }
+  function changeLedColor(i,hex,save){
+    setLedColorLocal(i,hex);
+    clearTimeout(ledColorTimers[i]);
+    ledColorTimers[i]=setTimeout(()=>sendLed(i,!!save,false,!save),160);
+  }
+  function renderActivity(){
+    const wrap=$("#activityList");
+    wrap.innerHTML=state.activity.slice(0,5).map(item=>'<div class="activity-item"><span class="dot"></span><time>'+item.time+'</time><span>'+item.message+'</span></div>').join("");
+  }
+  function renderModules(){
+    const s=state.status||{};
+    const modules=s.h11Modules||[];
+    const core=[
+      {name:"MOC",pin:"GPIO47",active:!!s.mocArmed,sub:s.fireAllowed?"ready":(s.fireLock||"--")},
+      {name:"TEMP",pin:"GPIO39",active:!!(s.temp&&s.temp.present),sub:(s.temp&&s.temp.present)?((Number(s.temp.f)||0).toFixed(1)+" F"):"--"},
+      {name:"BUTTON",pin:"GPIO8",active:!!(s.button&&s.button.enabled),sub:s.button?(s.button.pressed?"pressed":"free"):"--"}
+    ];
+    const rows=modules.map(m=>({name:roleName(m.roleLabel||("H11 "+m.index)),pin:"GPIO"+m.pin,active:!!m.active,sub:(m.edgeHz||0).toFixed?Number(m.edgeHz||0).toFixed(1)+" Hz":"--"})).concat(core);
+    $("#moduleList").innerHTML=rows.slice(0,6).map(m=>'<div class="module-row"><span class="dot '+(m.active?"":"warn")+'"></span><div><b>'+m.name+'</b><small>'+m.pin+'</small></div><span>'+m.sub+'</span></div>').join("");
+  }
+  function roleName(label){
+    label=String(label||"");
+    if(label.endsWith("-A")) return label+" / Exhaust";
+    if(label.endsWith("-B")) return label+" / Intake";
+    return label;
+  }
+  function wifiState(){
+    return (state.status&&state.status.wifi)||(state.config&&state.config.wifi)||{};
+  }
+  function setWifiNote(message){
+    const note=$("#wifiNote");
+    if(note) note.textContent=message||"--";
+  }
+  function ipParts(value){
+    const parts=String(value||"").split(".").map(Number);
+    return parts.length===4&&parts.every(v=>Number.isInteger(v)&&v>=0&&v<=255)?parts:null;
+  }
+  function renderWifiState(wifi){
+    wifi=wifi||wifiState();
+    const connected=!!wifi.staConnected;
+    const ip=connected?String(wifi.staIp||""):"";
+    const parts=ipParts(ip);
+    const ap=$("#wifiApIp"),sta=$("#wifiStaIp"),rssi=$("#wifiRssi"),tag=$("#wifiStateTag");
+    if(ap) ap.textContent=wifi.apIp||"192.168.4.1";
+    if(sta) sta.textContent=connected?(ip||"--"):tr("offline");
+    if(rssi) rssi.textContent=connected?String(wifi.rssi||0)+" dBm":"--";
+    if(tag) tag.textContent=connected?(wifi.staStatic?"STATIC":"DHCP"):tr("offline");
+    const controls=$("#staticIpControls"),button=$("#saveStaticIp"),prefix=$("#staticIpPrefix"),last=$("#staticLastOctet");
+    if(controls) controls.classList.toggle("disabled",!connected);
+    if(button) button.disabled=!connected;
+    if(prefix) prefix.textContent=parts?parts.slice(0,3).join(".")+".":"--.";
+    if(last&&parts&&document.activeElement!==last){
+      const configured=ipParts(wifi.staticIp);
+      last.value=String((wifi.staStatic&&configured?configured[3]:150));
+    }
+    if(connected&&!state.selectedWifiSsid) state.selectedWifiSsid=wifi.staSsid||"";
+  }
+  function applyConfig(c){
+    state.config=Object.assign(state.config,c||{});
+    state.config.leds=normalizeLeds(state.config.leds);
+    if(c&&c.schedule) state.config.schedule=Object.assign({},scheduleState(),c.schedule);
+    const settings=state.config.settings||{};
+    const ssid=$("#staSsid"),pass=$("#staPass");
+    if(ssid&&document.activeElement!==ssid){ssid.value=settings.staSsid||"";state.selectedWifiSsid=ssid.value}
+    if(pass&&document.activeElement!==pass) pass.value=settings.staPass||"";
+    $("#lightsOn").checked=!!state.config.lightsOn;
+    syncDimmerControl(state.config.ledDimmerPercent);
+    $("#buttonEnabled").checked=!!state.config.buttonEnabled;
+    syncSpeedControls(state.config.customSpeedPercent||100);
+    syncSliderEnabledState();
+    if(modeIsOriginal(state.config.mode)){
+      const original=modeToOriginal(state.config.mode);
+      state.originalSpeed=original.speed;
+      state.originalSetpointF=original.setpoint;
+    }
+    syncModeButtons();
+    renderLedDots();
+    syncGlobalPickerFromLeds();
+    renderWifiState(state.config.wifi||{});
+  }
+  function applyStatus(s){
+    state.status=s||{};
+    if(s.schedule&&Date.now()>=state.scheduleDirtyUntil) state.config.schedule=Object.assign({},s.schedule);
+    state.lastSync=new Date();
+    $("#apiText").textContent=tr("connected");
+    setDot("#apiDot","");
+    $("#syncText").textContent=fmtTime(state.lastSync);
+    setDot("#syncDot","");
+    $("#fwText").textContent=s.version||"--";
+    $("#uiVersion").textContent="UI glass · "+(s.version||"LittleFS");
+    const temp=s.temp||{};
+    const tempOk=!!temp.present;
+    if(tempOk){
+      $("#tempF").textContent=Number(temp.f).toFixed(1)+"°F";
+      $("#tempC").textContent=Number(temp.c).toFixed(1)+"°C";
+      $("#tempState").textContent=(temp.errors||0)===0?(state.lang==="es"?"Sensor OK":"Sensor OK"):(state.lang==="es"?"Revisar sensor":"Check sensor");
+      setDot("#tempDot",(temp.errors||0)===0?"":"warn");
+    }else{
+      $("#tempF").textContent="--°F";
+      $("#tempC").textContent="--°C";
+      $("#tempState").textContent=state.lang==="es"?"sin lectura":"no reading";
+      setDot("#tempDot","bad");
+    }
+    const modeDirty=Date.now()<state.modeDirtyUntil;
+    if(!modeDirty&&modeIsOriginal(s.mode)){
+      const liveOriginal=modeToOriginal(s.mode);
+      state.originalSpeed=liveOriginal.speed;
+      state.originalSetpointF=liveOriginal.setpoint;
+      writeLocal("fanOriginalSpeed",String(state.originalSpeed));
+      writeLocal("fanOriginalSetpoint",String(state.originalSetpointF));
+    }
+    if(!modeDirty&&fanModeOn(s)) {
+      state.sliderInputEnabled=Number(s.mode)===13;
+      writeLocal("fanSliderEnabled",state.sliderInputEnabled?"1":"0");
+    }
+    const original=(!modeDirty&&modeIsOriginal(s.mode))?modeToOriginal(s.mode):selectedOriginal();
+    $("#setpointText").textContent=original.setpoint?(original.setpoint+"°F / "+Math.round((original.setpoint-32)*5/9)+"°C"):(state.lang==="es"?"sin temperatura":"no temperature");
+    const fan=s.fanControl||{};
+    const speedDirty=Date.now()<state.speedDirtyUntil;
+    const liveCustom=Number(s.mode)===13 || (!!fan.customEnabled&&state.sliderInputEnabled);
+    const targetPct=liveCustom?clampPct(fan.customSpeedPercent||state.config.customSpeedPercent||100):percentForOriginalSpeed(original.speed);
+    if(!speedDirty){
+      state.config.customSpeedPercent=targetPct;
+      syncSpeedControls(state.config.customSpeedPercent);
+    }else{
+      syncSpeedControls(state.config.customSpeedPercent);
+    }
+    syncSliderEnabledState();
+    const displayPct=state.config.customSpeedPercent;
+    const vac=estimateVac(displayPct);
+    const modeLabel=s.modeLabel||"--";
+    $("#modeShort").textContent=modeLabel;
+    syncModeButtons();
+    $("#sharedSummary").textContent=displayPct+"% · "+vac+" VAC";
+    ["A","B"].forEach(id=>{
+      const raw=id==="A"?(s.sliders&&s.sliders.sa):(s.sliders&&s.sliders.sb);
+      const on=!!s.motorRequested&&sliderOn(raw);
+      $("#fan"+id+"State").textContent=on?"ON":"OFF";
+      $("#fan"+id+"State").className=on?"on":"off";
+      $("#fan"+id+"Speed").textContent=displayPct+"%";
+      $("#fan"+id+"Volt").textContent=vac+" VAC";
+      $("#fan"+id+"Direction").textContent=sliderLabel(raw);
+    });
+    renderSegments("segA",s.sliders&&s.sliders.sa);
+    renderSegments("segB",s.sliders&&s.sliders.sb);
+    $("#buttonState").textContent=s.button?(s.button.enabled?(state.lang==="es"?"Habilitado":"Enabled"):(state.lang==="es"?"Inactivo":"Disabled")):"--";
+    $("#buttonCounts").textContent=s.button?("short "+s.button.shortCount+" · long "+s.button.longCount):"--";
+    $("#buttonEnabled").checked=!!(s.button&&s.button.enabled);
+    $("#lightsOn").checked=!!s.lightsOn;
+    if(s.ledDimmerPercent!==undefined&&Date.now()>=state.dimmerDirtyUntil) syncDimmerControl(s.ledDimmerPercent);
+    $("#powerOnTop").classList.toggle("active",fanModeOn(s));
+    $("#powerOffTop").classList.toggle("active",!fanModeOn(s));
+    $("#fanOnBtn").classList.toggle("active",fanModeOn(s));
+    $("#fanOffBtn").classList.toggle("active",!fanModeOn(s));
+    $("#boostState").textContent=tr("startBoost")+": "+(fan.startBoostMs||2000)+" ms";
+    const zc=s.zc||{};
+    $("#zcText").textContent=zc.stable?(Number(zc.hz||0).toFixed(1)+" Hz"):"0.0 Hz";
+    setDot("#zcDot",zc.stable?"":"bad");
+    $("#fireState").textContent=s.fireAllowed?"MOC listo":(s.fireLock||"--");
+    $("#fireSub").textContent="pulses "+(s.firePulseCount||0)+" · "+(s.mocArmed?"armed":"disarmed");
+    $("#healthTag").textContent=s.fireAllowed?"READY":(tempOk?"SAFE":"CHECK");
+    $("#systemTag").textContent=s.fireAllowed?"READY":"SAFE";
+    if(s.leds&&s.leds.length){
+      const liveLeds=normalizeLeds(s.leds);
+      state.config.leds=liveLeds.map((led,i)=>Date.now()<state.ledDirtyUntil[i]?(state.config.leds[i]||led):led);
+      renderLedDots();
+      syncGlobalPickerFromLeds();
+    }
+    renderModules();
+    renderWifiState(s.wifi||{});
+    const otaTag=$("#otaReadyTag");
+    if(otaTag&&s.ota) otaTag.textContent=s.ota.ready?"READY":"NOT READY";
+    updateTimerCountdownDisplay();
+  }
+  function refreshStatus(){
+    if(refreshBusy) return Promise.resolve();
+    refreshBusy=true;
+    return apiGet("/api/status").then(applyStatus).catch(err=>{
+      $("#apiText").textContent=tr("apiError");
+      setDot("#apiDot","bad");
+      $("#syncText").textContent=err.message;
+    }).finally(()=>{refreshBusy=false});
+  }
+  function loadConfig(){
+    return apiGet("/api/config").then(applyConfig).catch(err=>{
+      $("#apiText").textContent=tr("apiError");
+      setDot("#apiDot","bad");
+      log("Config: "+err.message);
+      applyConfig(state.config);
+    });
+  }
+  function refreshAll(){
+    return loadConfig().then(refreshStatus);
+  }
+  function applyFan(quiet,forceCustom){
+    const useCustom=forceCustom===undefined?($("#customEnabled").checked?1:0):(forceCustom?1:0);
+    const original=selectedOriginal();
+    const payload={
+      customEnabled:useCustom,
+      speedPercent:clampPct($("#speedNumber").value),
+      originalSpeed:original.speed,
+      setpointF:original.setpoint,
+      save:1
+    };
+    state.speedDirtyUntil=Date.now()+2000;
+    state.modeDirtyUntil=Date.now()+2000;
+    state.config.customSpeedEnabled=!!payload.customEnabled;
+    state.config.customSpeedPercent=payload.speedPercent;
+    state.sliderInputEnabled=!!payload.customEnabled;
+    writeLocal("fanSliderEnabled",state.sliderInputEnabled?"1":"0");
+    syncSliderEnabledState();
+    return apiPost("/api/fan",payload).then(()=>{
+      if(!quiet) toast(payload.customEnabled?tr("activitySpeed")+" "+payload.speedPercent+"%":tr("activityMode"));
+      log(payload.customEnabled?tr("activitySpeed")+" "+payload.speedPercent+"%":tr("activityMode")+" · "+originalLabel(original));
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error ventilador":"Fan error"));
+  }
+  function applyFanDebounced(){
+    clearTimeout(speedTimer);
+    speedTimer=setTimeout(()=>applyFan(true,true),220);
+  }
+  function saveSpeedSelection(quiet){
+    const payload={
+      speedPercent:clampPct($("#speedNumber").value),
+      save:1
+    };
+    state.config.customSpeedPercent=payload.speedPercent;
+    syncSliderEnabledState();
+    return apiPost("/api/control",payload).then(()=>{
+      if(!quiet) toast(tr("activitySpeed")+" "+payload.speedPercent+"%");
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error velocidad":"Speed error"));
+  }
+  function saveSpeedSelectionDebounced(){
+    clearTimeout(speedSaveTimer);
+    speedSaveTimer=setTimeout(()=>saveSpeedSelection(true),260);
+  }
+  function setSliderMode(){
+    state.speedDirtyUntil=Date.now()+5000;
+    state.sliderInputEnabled=$("#customEnabled").checked;
+    writeLocal("fanSliderEnabled",state.sliderInputEnabled?"1":"0");
+    syncSliderEnabledState();
+    if(state.sliderInputEnabled){
+      if(fanModeOn()) applyFan(false,true);
+      else saveSpeedSelection(false);
+    }else if(fanModeOn()){
+      applyFan(false,false);
+    }
+  }
+  function speedInput(source){
+    const pct=clampPct(source==="range"?$("#speedRange").value:$("#speedNumber").value);
+    setSpeedSelection(pct);
+    if(speedCardActive()) applyFanDebounced();
+    else saveSpeedSelectionDebounced();
+  }
+  function fanOn(){
+    state.speedDirtyUntil=Date.now()+3000;
+    applyFan(false,state.sliderInputEnabled);
+  }
+  function fanOnHigh(){
+    state.sliderInputEnabled=false;
+    state.originalSpeed=1;
+    state.originalSetpointF=0;
+    writeLocal("fanOriginalSpeed","1");
+    writeLocal("fanOriginalSetpoint","0");
+    writeLocal("fanSliderEnabled","0");
+    syncSliderEnabledState();
+    setSpeedSelection(100);
+    return apiPost("/api/fan",{customEnabled:0,speedPercent:100,originalSpeed:1,setpointF:0,save:1}).then(()=>{
+      toast(tr("powerOnHi"));
+      log(tr("powerOnHi"));
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error encendiendo":"Power on error"));
+  }
+  function setButtonEnabled(){
+    const enabled=$("#buttonEnabled").checked;
+    apiPost("/api/control",{buttonEnabled:enabled?1:0,save:1}).then(()=>{
+      toast(tr("activityButton")+" "+(enabled?"ON":"OFF"));
+      log(tr("activityButton")+" "+(enabled?"ON":"OFF"));
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error boton":"Button error"));
+  }
+  function setLights(){
+    const enabled=$("#lightsOn").checked;
+    state.config.lightsOn=enabled;
+    state.config.leds=state.config.leds.map((led,i)=>Object.assign({},led,{lit:enabled&&Number(state.config.ledDimmerPercent)>0&&led.enabled!==false&&sequenceLedActive(i)}));
+    renderLedDots(true);
+    apiPost("/api/control",{lightsOn:enabled?1:0,save:0}).then(()=>{
+      toast(tr("activityLights")+" "+(enabled?"ON":"OFF"));
+      log(tr("activityLights")+" "+(enabled?"ON":"OFF"));
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error luces":"Lights error"));
+  }
+  function clampDimmer(v){
+    v=Math.round(Number(v));
+    if(!Number.isFinite(v)) v=100;
+    return Math.max(0,Math.min(100,v));
+  }
+  function syncDimmerControl(value){
+    const pct=clampDimmer(value);
+    state.config.ledDimmerPercent=pct;
+    const range=$("#ledDimmerRange");
+    const label=$("#ledDimmerValue");
+    if(range&&document.activeElement!==range) range.value=pct;
+    if(label) label.textContent=pct+"%";
+  }
+  function setDimmer(save,quiet){
+    const range=$("#ledDimmerRange");
+    const pct=clampDimmer(range?range.value:state.config.ledDimmerPercent);
+    syncDimmerControl(pct);
+    return apiPost("/api/control",{ledDimmerPercent:pct,save:save?1:0}).then(()=>{
+      state.dimmerDirtyUntil=0;
+      if(!quiet) toast(tr("dimmer")+" "+pct+"%");
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error dimmer":"Dimmer error"));
+  }
+  function changeDimmer(){
+    syncDimmerControl($("#ledDimmerRange").value);
+    if(Number(state.config.ledDimmerPercent)===0){
+      state.config.leds=state.config.leds.map(led=>Object.assign({},led,{lit:false}));
+      renderLedDots(true);
+    }
+    state.dimmerDirtyUntil=Date.now()+1200;
+    clearTimeout(dimmerTimer);
+    dimmerTimer=setTimeout(()=>setDimmer(false,true),140);
+  }
+  function updateGlobalColorMeta(){
+    const meta=colorMeta($("#allColor").value);
+    $("#allHex").textContent=meta.hex;
+    $("#allName").textContent=meta.name;
+    $("#allRgb").textContent=meta.rgbText;
+    const dColor=$("#dAllColor");
+    if(dColor&&document.activeElement!==dColor) dColor.value=meta.hex;
+    const dHex=$("#dAllHex"),dName=$("#dAllName"),dRgb=$("#dAllRgb");
+    if(dHex) dHex.textContent=meta.hex;
+    if(dName) dName.textContent=meta.name;
+    if(dRgb) dRgb.textContent=meta.rgbText;
+  }
+  function setGlobalPicker(hex){
+    const meta=colorMeta(hex);
+    $("#allColor").value=meta.hex;
+    updateGlobalColorMeta();
+  }
+  function syncGlobalPickerFromLeds(){
+    if(Date.now()<state.globalDirtyUntil){
+      updateGlobalColorMeta();
+      return;
+    }
+    const first=state.config.leds[0];
+    if(!first){updateGlobalColorMeta();return}
+    const hex=rgbToHex(first.r,first.g,first.b);
+    const same=state.config.leds.every(led=>rgbToHex(led.r,led.g,led.b)===hex);
+    if(same) setGlobalPicker(hex);
+    else updateGlobalColorMeta();
+  }
+  function setGlobalColorLocal(hex){
+    state.globalDirtyUntil=Date.now()+5000;
+    const meta=colorMeta(hex);
+    setGlobalPicker(meta.hex);
+    state.config.leds=state.config.leds.map(led=>Object.assign({},led,meta.rgb,{lit:state.config.lightsOn!==false&&Number(state.config.ledDimmerPercent)>0&&led.enabled!==false}));
+    renderLedDots(true);
+  }
+  function changeGlobalColor(save){
+    setGlobalColorLocal($("#allColor").value);
+    clearTimeout(globalColorTimer);
+    globalColorTimer=setTimeout(()=>sendAll(!!save,save?false:true),160);
+  }
+  function sendAll(save,quiet){
+    const rgb=hexToRgb($("#allColor").value);
+    setGlobalColorLocal(rgbToHex(rgb.r,rgb.g,rgb.b));
+    apiPost("/api/led-all",{r:rgb.r,g:rgb.g,b:rgb.b,ledDimmerPercent:state.config.ledDimmerPercent,preview:1,save:save?1:0}).then(()=>{
+      state.config.leds=state.config.leds.map(led=>Object.assign({},led,rgb));
+      state.globalDirtyUntil=0;
+      renderLedDots();
+      syncGlobalPickerFromLeds();
+      if(!quiet) toast(save?tr("activityColor"):tr("globalColor"));
+      if(!quiet) log((save?tr("activityColor"):tr("globalColor"))+" "+rgbToHex(rgb.r,rgb.g,rgb.b));
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error color":"Color error"));
+  }
+  function functionLeds(){
+    state.config.lightsOn=true;
+    state.config.leds=state.config.leds.map((led,i)=>Object.assign({},led,{enabled:true,lit:Number(state.config.ledDimmerPercent)>0&&sequenceLedActive(i)}));
+    renderLedDots();
+    apiPost("/api/led-function",{}).then(()=>{
+      toast(tr("functionLeds"));
+      log(tr("functionLeds"));
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error indicadores":"Indicator error"));
+  }
+  function toggleLed(i,forced){
+    const led=state.config.leds[i]||FALLBACK_LEDS[i];
+    const previous=led.enabled!==false;
+    const enabled=forced===undefined?!previous:!!forced;
+    setLedEnabledLocal(i,enabled);
+    apiPost("/api/led",{index:i,enabled:enabled?1:0,preview:0,save:0}).then(()=>{
+      toast("LED "+(i+1)+" "+(enabled?"ON":"OFF"));
+      log(tr("activityLed")+" "+(i+1)+": "+(enabled?"ON":"OFF"));
+      refreshStatus();
+    }).catch(()=>{
+      setLedEnabledLocal(i,previous);
+      toast("LED "+(i+1)+" error");
+    });
+  }
+  function sendLed(i,save,detail,quiet){
+    const colorEl=detail?$("#dLedColor"+i):$("#ledColor"+i);
+    const enabledEl=detail?$("#dLedEnabled"+i):$("#ledEnabled"+i);
+    const rgb=hexToRgb(colorEl.value);
+    const enabled=enabledEl?enabledEl.checked:((state.config.leds[i]||{}).enabled!==false);
+    if(!state.config.leds[i]) state.config.leds[i]=Object.assign({},FALLBACK_LEDS[i]);
+    Object.assign(state.config.leds[i],rgb,{enabled:enabled});
+    if(!quiet) renderLedDots(true);
+    syncLedDetail(i);
+    apiPost("/api/led",{index:i,r:rgb.r,g:rgb.g,b:rgb.b,enabled:enabled?1:0,preview:enabled?1:0,save:save?1:0}).then(()=>{
+      state.ledDirtyUntil[i]=0;
+      if(!quiet) toast("LED "+(i+1)+" "+(save?tr("save"):tr("globalColor")));
+      if(!quiet) log("LED "+(i+1)+" "+rgbToHex(rgb.r,rgb.g,rgb.b));
+      if(!quiet||save) refreshStatus();
+    }).catch(()=>toast("LED "+(i+1)+" error"));
+  }
+  function saveLedPalette(){
+    return apiPost("/api/save",{}).then(()=>{
+      toast(tr("savePalette")+" OK");
+      log(tr("savePalette"));
+    }).catch(()=>toast(state.lang==="es"?"Error guardando LED":"LED save error"));
+  }
+  function powerOff(){
+    apiPost("/api/power-off",{}).then(()=>{
+      toast(tr("activityPower"));
+      log(tr("activityPower"));
+      refreshStatus();
+    }).catch(()=>toast(state.lang==="es"?"Error apagando":"Power error"));
+  }
+  function syncTime(){
+    const now=Math.floor(Date.now()/1000);
+    const offset=-new Date().getTimezoneOffset();
+    return apiPost("/api/time",{epoch:now,tzOffsetMinutes:offset}).then(()=>refreshStatus()).catch(()=>{});
+  }
+  function syncTimeIfSafe(){
+    const s=state.status||{};
+    const time=s.time||{};
+    const schedule=s.schedule||{};
+    if(time.synced||s.motorRequested||schedule.active||schedule.driving) return Promise.resolve();
+    return syncTime();
+  }
+  function tempHistoryDays(){
+    const hist=(state.status&&state.status.tempHistory)||{};
+    return Array.isArray(hist.days)?hist.days:[];
+  }
+  function tempHistoryChart(day){
+    const hours=(day&&Array.isArray(day.hours))?day.hours:[];
+    const values=Array.from({length:24},(_,i)=>hours[i]==null?null:Number(hours[i]));
+    const valid=values.filter(v=>Number.isFinite(v));
+    if(!valid.length){
+      return '<div class="chip"><b>'+tr("history")+'</b><span>'+tr("noHistory")+'</span></div>';
+    }
+    let min=Math.min(...valid),max=Math.max(...valid);
+    if(max-min<1){max+=0.5;min-=0.5}
+    const points=values.map((v,h)=>{
+      if(!Number.isFinite(v)) return "";
+      const x=6+h*(88/23);
+      const y=152-((v-min)/(max-min))*118;
+      return x.toFixed(1)+","+y.toFixed(1);
+    }).filter(Boolean).join(" ");
+    const dots=values.map((v,h)=>{
+      if(!Number.isFinite(v)) return "";
+      const x=6+h*(88/23);
+      const y=152-((v-min)/(max-min))*118;
+      return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="1.9"/>';
+    }).join("");
+    return '<svg class="temp-chart" viewBox="0 0 100 170" role="img" aria-label="'+tr("history")+'">'+
+      '<path d="M6 34H94M6 93H94M6 152H94" stroke="currentColor" stroke-opacity=".16" stroke-width="1"/>'+
+      '<polyline points="'+points+'" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+
+      '<g fill="currentColor">'+dots+'</g>'+
+      '<text x="6" y="18" fill="currentColor" font-size="6">'+max.toFixed(1)+'F</text>'+
+      '<text x="6" y="166" fill="currentColor" font-size="6">'+min.toFixed(1)+'F</text>'+
+      '</svg>';
+  }
+	  function tempHourGrid(day){
+	    const hours=(day&&Array.isArray(day.hours))?day.hours:[];
+	    return '<div class="hour-grid">'+Array.from({length:24},(_,h)=>{
+	      const v=hours[h];
+	      return '<div class="hour-cell"><span>'+hourLabel(h)+'</span><b>'+(v==null?"--":Number(v).toFixed(1)+" F")+'</b></div>';
+	    }).join("")+'</div>';
+	  }
+  function renderTempHistoryDay(){
+    const select=$("#tempDaySelect");
+    const wrap=$("#tempHistoryChart");
+    if(!select||!wrap) return;
+    const days=tempHistoryDays();
+    const idx=Math.max(0,Math.min(days.length-1,Number(select.value)||0));
+    const day=days[idx];
+    wrap.innerHTML=tempHistoryChart(day)+tempHourGrid(day);
+  }
+  function tempHistoryHTML(){
+    const days=tempHistoryDays();
+    if(!days.length){
+      return '<div class="detail-panel"><h3>'+tr("history")+'</h3><div class="chip"><b>'+tr("current")+'</b><span>'+tr("noHistory")+'</span></div></div>';
+    }
+    return '<div class="detail-panel"><div class="temp-history-head"><h3>'+tr("history")+'</h3><select class="select" id="tempDaySelect">'+
+      days.map((d,i)=>'<option value="'+i+'">'+escapeAttr(d.label||String(d.day||i+1))+'</option>').join("")+
+      '</select></div><div id="tempHistoryChart"></div></div>';
+  }
+	  function scheduleState(){
+	    const sch=Object.assign({enabled:false,mode:0,daysMask:0,startMin:480,endMin:1080,dailyDaysMask:0,daily:[],speed:1,speedPercent:100,ledDimmerPercent:100,tempRule:0,tempF:75},state.config.schedule||(state.status&&state.status.schedule)||{});
+	    if(!sch.mode&&sch.enabled) sch.mode=1;
+	    sch.daily=Array.from({length:7},(_,i)=>Object.assign({enabled:!!(sch.dailyDaysMask&(1<<i)),startMin:480,endMin:1080},sch.daily[i]||{}));
+	    sch.dailyDaysMask=sch.daily.reduce((mask,day,i)=>day.enabled?mask|(1<<i):mask,0);
+	    return sch;
+	  }
+	  function scheduleEditorMode(sch){
+	    const activeMode=Number(sch.mode)||0;
+	    if(activeMode===1||activeMode===2) state.scheduleEditorMode=activeMode;
+	    return activeMode||state.scheduleEditorMode||1;
+	  }
+	  function scheduleEditorTimes(sch,editorMode){
+	    if(editorMode===2){
+	      const day=sch.daily[state.scheduleSelectedDay]||{startMin:480,endMin:1080};
+	      return {startMin:Number(day.startMin)||0,endMin:Number(day.endMin)||0};
+	    }
+	    return {startMin:Number(sch.startMin)||0,endMin:Number(sch.endMin)||0};
+	  }
+	  function scheduleSpanKey(startMin,endMin){
+	    if(Number(startMin)===Number(endMin)) return "invalidSchedule";
+	    return Number(endMin)>Number(startMin)?"sameDay":"overnight";
+	  }
+	  function updateScheduleSpanNote(){
+	    const note=$("#scheduleSpanNote");
+	    if(!note) return;
+	    const current=scheduleState();
+	    const start=clockPartsToMinutes("scheduleStart",current.startMin);
+	    const end=clockPartsToMinutes("scheduleEnd",current.endMin);
+	    const key=scheduleSpanKey(start,end);
+	    note.textContent=tr(key);
+	    note.classList.toggle("invalid",key==="invalidSchedule");
+	  }
+	  function minutesToClockParts(minutes){
+	    minutes=Math.max(0,Math.min(1439,Number(minutes)||0));
+	    const h24=Math.floor(minutes/60);
+	    return {hour:h24%12||12,minute:minutes%60,ampm:h24>=12?"PM":"AM"};
+	  }
+	  function timeWheelOptions(min,max,value,pad){
+	    let out="";
+	    for(let i=min;i<=max;i++){
+	      const label=pad?String(i).padStart(2,"0"):String(i);
+	      out+='<button type="button" class="time-wheel-option '+(Number(value)===i?"active":"")+'" data-wheel-value="'+i+'" role="option" aria-selected="'+(Number(value)===i?"true":"false")+'">'+label+'</button>';
+	    }
+	    return out;
+	  }
+	  function ampmWheelOptions(value){
+	    return ["AM","PM"].map(v=>'<button type="button" class="time-wheel-option '+(value===v?"active":"")+'" data-wheel-value="'+v+'" role="option" aria-selected="'+(value===v?"true":"false")+'">'+v+'</button>').join("");
+	  }
+	  function wheelColumn(prefix,part,label,content){
+	    return '<div class="time-wheel-col" data-wheel-prefix="'+prefix+'" data-wheel-part="'+part+'" role="listbox" aria-label="'+escapeAttr(label)+'">'+content+'</div>';
+	  }
+	  function scheduleTimeWheel(prefix,label,minutes){
+	    const p=minutesToClockParts(minutes);
+	    return '<div class="time-wheel-card"><label>'+label+'</label><div class="time-wheel">'+
+	      '<input type="hidden" id="'+prefix+'Hour" value="'+p.hour+'">'+
+	      '<input type="hidden" id="'+prefix+'Minute" value="'+p.minute+'">'+
+	      '<input type="hidden" id="'+prefix+'Ampm" value="'+p.ampm+'">'+
+	      wheelColumn(prefix,"Hour",label+" hour",timeWheelOptions(1,12,p.hour,false))+
+	      wheelColumn(prefix,"Minute",label+" minute",timeWheelOptions(0,59,p.minute,true))+
+	      wheelColumn(prefix,"Ampm",label+" AM PM",ampmWheelOptions(p.ampm))+
+	      '</div></div>';
+	  }
+	  function clockPartsToMinutes(prefix,fallback){
+	    const parts=minutesToClockParts(fallback);
+	    const hEl=$("#"+prefix+"Hour");
+	    const mEl=$("#"+prefix+"Minute");
+	    const apEl=$("#"+prefix+"Ampm");
+	    let hour=Math.max(1,Math.min(12,Number(hEl?hEl.value:parts.hour)||parts.hour));
+	    const minute=Math.max(0,Math.min(59,Number(mEl?mEl.value:parts.minute)||0));
+	    const ampm=(apEl&&apEl.value==="PM")?"PM":"AM";
+	    hour=hour%12;
+	    if(ampm==="PM") hour+=12;
+	    return hour*60+minute;
+	  }
+	  function timerCountdownText(){
+    const tm=(state.status&&state.status.time)||{};
+    const left=Number(tm.durationOffInMs)||0;
+    if(!tm.durationTimer||left<=0) return "OFF";
+    const total=Math.max(0,Math.ceil(left/1000));
+    const min=Math.floor(total/60);
+    const sec=total%60;
+    return min+":"+String(sec).padStart(2,"0");
+  }
+	  function scheduleHTML(){
+	    const sch=scheduleState();
+	    const mode=Number(sch.mode)||0;
+	    const editorMode=scheduleEditorMode(sch);
+	    const times=scheduleEditorTimes(sch,editorMode);
+	    const speedPct=clampPct(sch.speedPercent);
+	    const dimmerPct=clampDimmer(sch.ledDimmerPercent);
+	    const dayLetters=state.lang==="es"?["L","M","X","J","V","S","D"]:["M","T","W","T","F","S","S"];
+	    const dayNames=state.lang==="es"?["Lunes","Martes","Miercoles","Jueves","Viernes","Sabado","Domingo"]:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+	    const activeMask=editorMode===2?sch.dailyDaysMask:sch.daysMask;
+	    const spanKey=scheduleSpanKey(times.startMin,times.endMin);
+	    return '<div class="detail-panel"><h3>'+tr("weeklySchedule")+'</h3><div class="schedule-grid">'+
+	      '<div class="schedule-mode-row"><label class="switch"><input id="scheduleWeekly" type="checkbox" '+(mode===1?"checked":"")+'> '+tr("weekly")+'</label><label class="switch"><input id="scheduleDaily" type="checkbox" '+(mode===2?"checked":"")+'> '+tr("daily")+'</label></div>'+
+	      '<div class="day-row">'+dayLetters.map((d,i)=>'<button type="button" class="day-btn '+((activeMask&(1<<i))?"active ":"")+(editorMode===2&&state.scheduleSelectedDay===i?"selected":"")+'" data-day="'+i+'" title="'+dayNames[i]+'">'+d+'</button>').join("")+'</div>'+
+	      '<div class="schedule-time-grid">'+scheduleTimeWheel("scheduleStart",tr("startTime"),times.startMin)+scheduleTimeWheel("scheduleEnd",tr("endTime"),times.endMin)+'</div>'+
+	      '<p class="schedule-span-note '+(spanKey==="invalidSchedule"?"invalid":"")+'" id="scheduleSpanNote">'+tr(spanKey)+'</p>'+
+	      '<div class="time-mode-grid"><button type="button" class="preset schedule-speed '+(Number(sch.speed)===1?"active":"")+'" data-schedule-speed="1" data-schedule-percent="100">HI</button><button type="button" class="preset schedule-speed '+(Number(sch.speed)===2?"active":"")+'" data-schedule-speed="2" data-schedule-percent="85">LOW</button></div>'+
+	      '<div class="dimmer-block"><div class="eyebrow dimmer-head"><strong>'+tr("scheduleSpeed")+'</strong><span id="scheduleSpeedValue">'+speedPct+'%</span></div><input class="range" id="scheduleSpeedRange" type="range" min="85" max="100" step="1" value="'+speedPct+'" aria-label="'+tr("scheduleSpeed")+'"></div>'+
+	      '<div class="dimmer-block"><div class="eyebrow dimmer-head"><strong>'+tr("scheduleDimmer")+'</strong><span id="scheduleDimmerValue">'+dimmerPct+'%</span></div><input class="range" id="scheduleDimmerRange" type="range" min="0" max="100" step="1" value="'+dimmerPct+'" aria-label="'+tr("scheduleDimmer")+'"></div>'+
+	      '</div></div>';
+	  }
+  function timerHTML(){
+    const speed=Number(state.timerSpeed)===2?2:1;
+    return '<div class="detail-panel"><h3>Timer</h3><div class="schedule-grid">'+
+      '<div class="timer-grid"><div class="field"><label>'+tr("minutes")+'</label><input class="number" id="durationMinutes" type="number" min="1" max="1440" value="30" inputmode="numeric"></div><div class="chip"><b>'+tr("remaining")+'</b><span class="mono" id="timerCountdown">'+timerCountdownText()+'</span></div></div>'+
+      '<div class="time-mode-grid"><button type="button" class="preset timer-speed '+(speed!==2?"active":"")+'" data-timer-speed="1">HI</button><button type="button" class="preset timer-speed '+(speed===2?"active":"")+'" data-timer-speed="2">LOW</button></div>'+
+      '<div class="inline-actions"><button class="action-btn good" id="dSetDuration" type="button">'+tr("timerOn")+'</button><button class="action-btn danger" id="dClearTimer" type="button">'+tr("timerOff")+'</button></div>'+
+      '</div></div>';
+  }
+  function detailHTML(type){
+    const s=state.status||{};
+    const temp=s.temp||{};
+    const fan=s.fanControl||{};
+    const pct=state.config.customSpeedPercent||100;
+    const vac=estimateVac(pct);
+    if(type==="temperature"){
+      return '<div class="detail-panel"><h3>'+tr("current")+'</h3><div class="big-temp">'+(temp.present?Number(temp.f).toFixed(1):"--")+'°F <span>/ '+(temp.present?Number(temp.c).toFixed(1):"--")+'°C</span></div><div class="meta-row"><span>'+tr("sensor")+': <b>GPIO'+(temp.pin||39)+'</b></span><span>'+tr("errors")+': <b>'+(temp.errors||0)+' / CRC '+(temp.crcErrors||0)+'</b></span><span>Age: <b>'+(temp.ageMs?Math.round(temp.ageMs/1000)+" s":"--")+'</b></span></div></div>'+
+      tempHistoryHTML();
+    }
+    if(type==="fans"){
+      return '<div class="detail-panel"><h3>'+tr("fansSync")+'</h3><div class="speed-value"><strong>'+pct+'%</strong><span><b>'+vac+' VAC</b> · '+tr("estimated")+'</span></div><p class="meta-row">'+tr("sharedRule")+'</p></div>'+
+      fanDetailRow("A",s.sliders&&s.sliders.sa,pct,vac,s.motorRequested)+fanDetailRow("B",s.sliders&&s.sliders.sb,pct,vac,s.motorRequested);
+    }
+    if(type==="speed"){
+      return '<div class="detail-panel"><h3>'+tr("syncSpeed")+'</h3><label class="switch"><input id="dCustomEnabled" type="checkbox" '+(fan.customEnabled?"checked":"")+'> '+tr("useSlider")+'</label><div class="speed-value"><strong id="dSpeedValue">'+pct+'%</strong><span><b id="dVoltageValue">'+vac+' VAC</b> · '+tr("estimated")+'</span></div><div class="speed-controls"><input class="range" id="dSpeedRange" type="range" min="85" max="100" value="'+pct+'" step="1"><input class="number" id="dSpeedNumber" type="number" min="85" max="100" value="'+pct+'" step="1"></div><div class="presets">'+[85,88,92,96,100].map((v,i)=>'<button type="button" class="preset detail-preset '+(Math.abs(v-pct)<=1?"active":"")+'" data-speed="'+v+'">'+["LOWEST","LOWER","LOW","FAST","FASTEST"][i]+'</button>').join("")+'</div><div class="inline-actions"><button class="action-btn good" id="dApplyFan" type="button">✓ '+tr("apply")+'</button><button class="action-btn danger" id="dPowerOff" type="button">⏻ '+tr("powerOff")+'</button></div><div class="meta-row" style="margin-top:10px"><span>'+tr("startBoost")+': <b>'+(fan.startBoostMs||2000)+' ms</b></span><span>delay: <b>'+(fan.customDelayUs||"--")+' us</b></span></div></div>';
+    }
+    if(type==="directions"){
+      return '<div class="detail-panel"><h3>'+tr("directions")+'</h3><div class="direction-grid">'+directionDetailRow("A",s.sliders&&s.sliders.sa)+directionDetailRow("B",s.sliders&&s.sliders.sb)+'</div></div><div class="detail-panel"><h3>'+tr("modules")+'</h3><div class="module-list">'+moduleRowsHTML(true)+'</div></div>';
+    }
+    if(type==="globalLed"){
+      const meta=colorMeta($("#allColor").value);
+      return '<div class="detail-panel"><h3>'+tr("globalColor")+'</h3><label class="switch"><input id="dLightsOn" type="checkbox" '+($("#lightsOn").checked?"checked":"")+'> '+tr("lightsOn")+'</label><div class="color-box" style="margin-top:11px"><input type="color" id="dAllColor" value="'+meta.hex+'"><div class="color-meta">'+chip(tr("code"),'<span id="dAllHex">'+meta.hex+'</span>',true)+chip(tr("name"),'<span id="dAllName">'+meta.name+'</span>',true)+chip("RGB",'<span id="dAllRgb">'+meta.rgbText+'</span>',true)+'</div></div><div class="inline-actions"><button class="action-btn" id="dPreviewAll" type="button">● '+tr("preview")+'</button><button class="action-btn good" id="dSaveAll" type="button">◆ '+tr("save")+'</button><button class="action-btn" id="dClearPreview" type="button">◌ '+tr("functionLeds")+'</button></div></div>';
+    }
+    if(type==="leds"){
+      return '<div class="detail-panel"><h3>LED 1-7</h3><div class="led-detail-list">'+state.config.leds.map((led,i)=>ledDetailRow(led,i)).join("")+'</div></div>';
+    }
+    if(type==="time"){
+      return '<div class="detail-panel"><h3>'+tr("timeSchedule")+'</h3><div class="clock" id="detailClock">'+fmtTime(new Date())+'</div><div class="date" id="detailDateText">'+fmtDate(new Date())+'</div><div class="inline-actions"><button class="action-btn good" id="dSyncTime" type="button">↻ Sync</button></div></div>'+scheduleHTML()+timerHTML();
+    }
+    if(type==="activity"){
+      return '<div class="detail-panel"><h3>'+tr("recentActivity")+'</h3><div class="activity">'+state.activity.map(item=>'<div class="activity-item"><span class="dot"></span><time>'+item.time+'</time><span>'+item.message+'</span></div>').join("")+'</div></div>';
+    }
+    return systemDetailHTML(s);
+  }
+  function systemDetailHTML(s){
+    return '<div class="detail-panel"><h3>'+tr("systemSafety")+'</h3><div class="detail-grid">'+chip("MOC",s.mocArmed?"armed":"disarmed")+chip("FIRE",s.fireAllowed?"ready":(s.fireLock||"--"))+chip("ZC",s.zc?(s.zc.stable?Number(s.zc.hz||0).toFixed(1)+" Hz":"0.0 Hz"):"--")+chip("AC off count",s.ac?s.ac.connectOffCount||0:"--")+chip("DATA","GPIO"+((s.ledPreview&&s.ledPreview.dataPin)||21))+chip("Button",s.button&&s.button.enabled?"enabled":"disabled")+'</div></div>'+
+    '<div class="detail-panel"><h3>'+tr("modules")+'</h3><div class="module-list">'+moduleRowsHTML(true)+'</div></div>';
+  }
+  function field(id,label,value,type){
+    return '<div class="field"><label for="'+id+'">'+label+'</label><input class="text-input" id="'+id+'" type="'+(type||"text")+'" value="'+escapeAttr(value||"")+'"></div>';
+  }
+  function escapeAttr(value){
+    return String(value).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  }
+  function chip(label,value,raw){
+    return '<div class="chip"><b>'+label+'</b><span class="mono">'+(raw?value:String(value))+'</span></div>';
+  }
+  function fanDetailRow(id,raw,pct,vac,motor){
+    const on=!!motor&&sliderOn(raw);
+    return '<div class="detail-panel"><h3>'+tr(id==="A"?"fanA":"fanB")+'</h3><div class="fan-row"><div class="fan-id">'+id+'</div><div class="fan-main"><div class="fan-top"><span class="'+(on?"on":"off")+'">'+(on?"ON":"OFF")+'</span><span>'+sliderLabel(raw)+'</span></div><div class="fan-sub">'+pct+'% · '+vac+' VAC · '+tr("sliderState")+'</div></div><div class="fan-dir">'+sliderLabel(raw)+'</div></div></div>';
+  }
+  function directionDetailRow(id,raw){
+    const label=sliderRaw(raw);
+    const names={A:"Exhaust",OFF:"OFF",B:"Intake"};
+    return '<div class="direction-row"><div class="direction-label">'+id+'</div><div class="segmented">'+["A","OFF","B"].map(v=>'<span class="seg-pill '+(v===label?"active":"")+'">'+names[v]+'</span>').join("")+'</div></div>';
+  }
+  function moduleRowsHTML(all){
+    const s=state.status||{};
+    const rows=(s.h11Modules||[]).map(m=>({name:roleName(m.roleLabel||("H11 "+m.index)),pin:"GPIO"+m.pin,active:!!m.active,sub:Number(m.edgeHz||0).toFixed(1)+" Hz · age "+(m.ageMs===4294967295?"--":m.ageMs+" ms")}));
+    rows.push({name:"MOC",pin:"GPIO47",active:!!s.mocArmed,sub:s.fireAllowed?"ready":(s.fireLock||"--")});
+    rows.push({name:"DS18B20",pin:"GPIO39",active:!!(s.temp&&s.temp.present),sub:(s.temp&&s.temp.present)?Number(s.temp.f).toFixed(1)+" F":"--"});
+    rows.push({name:"BUTTON",pin:"GPIO8",active:!!(s.button&&s.button.enabled),sub:s.button?(s.button.pressed?"pressed":"free"):"--"});
+    return rows.slice(0,all?rows.length:6).map(m=>'<div class="module-row"><span class="dot '+(m.active?"":"warn")+'"></span><div><b>'+m.name+'</b><small>'+m.pin+'</small></div><span>'+m.sub+'</span></div>').join("");
+  }
+  function ledDetailRow(led,i){
+    const hex=rgbToHex(led.r,led.g,led.b);
+    const meta=colorMeta(hex);
+    const lit=ledIsLit(led,i);
+    return '<div class="led-detail-row"><button type="button" class="led-dot '+(lit?"on lit":"off")+'" style="background:'+hex+';--led-glow:'+hex+'66" data-toggle-led="'+i+'" aria-pressed="'+(led.enabled!==false?"true":"false")+'"></button><div><div class="fan-top"><strong>LED '+(i+1)+' / '+led.label+'</strong><label class="switch"><input id="dLedEnabled'+i+'" type="checkbox" '+(led.enabled!==false?"checked":"")+'> ON</label></div><div class="led-detail-tools"><input type="color" id="dLedColor'+i+'" value="'+hex+'"><button class="action-btn" type="button" data-preview-led="'+i+'">'+tr("preview")+'</button><button class="action-btn good" type="button" data-save-led="'+i+'">'+tr("save")+'</button></div><div class="meta-row"><span class="mono" id="dLedHex'+i+'">'+meta.hex+'</span><span id="dLedName'+i+'">'+meta.name+'</span><span class="mono" id="dLedRgb'+i+'">'+meta.rgbText+'</span></div></div></div>';
+  }
+  function setOtaProgress(pct,msg){
+    const fill=$("#otaProgress"),note=$("#otaNote");
+    if(fill) fill.style.width=Math.max(0,Math.min(100,pct||0))+"%";
+    if(note&&msg) note.textContent=msg;
+  }
+  function updateAdminStatus(){
+    return adminGet("/api/admin/status").then(data=>{
+      const ota=data.ota||{};
+      const tag=$("#otaReadyTag");
+      if(tag) tag.textContent=ota.ready?"READY":"NOT READY";
+      const pct=ota.total?Math.round((ota.bytes||0)*100/ota.total):(ota.active?8:(ota.ok?100:0));
+      setOtaProgress(pct,ota.active?("Uploading "+ota.kind+" · "+pct+"%"):(ota.ok?("Ready to reboot · "+ota.kind):("Ready · OTA "+(ota.ready?"OK":"no partition"))));
+      return data;
+    }).catch(err=>{
+      setOtaProgress(0,"Admin auth/API error: "+err.message);
+      throw err;
+    });
+  }
+  function renderWifiNetworks(networks){
+    const wrap=$("#wifiNetworkList");
+    if(!wrap) return;
+    const bySsid=new Map();
+    (networks||[]).forEach(network=>{
+      const ssid=String(network.ssid||"").trim();
+      if(!ssid) return;
+      const previous=bySsid.get(ssid);
+      if(!previous||Number(network.rssi)>Number(previous.rssi)) bySsid.set(ssid,network);
+    });
+    const rows=Array.from(bySsid.values()).sort((a,b)=>Number(b.rssi)-Number(a.rssi));
+    if(!rows.length){wrap.innerHTML='<span class="wifi-empty">'+tr("noNetworks")+'</span>';return}
+    wrap.innerHTML=rows.map(network=>{
+      const ssid=String(network.ssid||"");
+      const active=ssid===(state.selectedWifiSsid||$("#staSsid").value);
+      return '<button class="wifi-network '+(active?"active":"")+'" type="button" data-wifi-ssid="'+escapeAttr(ssid)+'"><span><strong>'+escapeAttr(ssid)+'</strong><small>2.4 GHz · CH '+Number(network.channel||0)+'</small></span><span class="mono">'+Number(network.rssi||0)+' dBm '+(network.secure?"●":"○")+'</span></button>';
+    }).join("");
+    wrap.querySelectorAll("[data-wifi-ssid]").forEach(button=>button.addEventListener("click",()=>{
+      state.selectedWifiSsid=button.dataset.wifiSsid||"";
+      $("#staSsid").value=state.selectedWifiSsid;
+      wrap.querySelectorAll(".wifi-network").forEach(item=>item.classList.toggle("active",item===button));
+      $("#staPass").focus();
+    }));
+  }
+  function pollWifiScan(){
+    clearTimeout(wifiScanTimer);
+    apiGet("/api/wifi/scan").then(data=>{
+      if(data.scanning){
+        setWifiNote(tr("scanning")+"...");
+        wifiScanTimer=setTimeout(pollWifiScan,650);
+        return;
+      }
+      $("#wifiScanBtn").disabled=false;
+      renderWifiNetworks(data.networks||[]);
+      setWifiNote((data.networks||[]).length+" SSID");
+    }).catch(err=>{
+      $("#wifiScanBtn").disabled=false;
+      setWifiNote("Wi-Fi scan error · "+err.message);
+    });
+  }
+  function scanWifiNetworks(){
+    clearTimeout(wifiScanTimer);
+    $("#wifiScanBtn").disabled=true;
+    setWifiNote(tr("scanning")+"...");
+    apiPost("/api/wifi/scan",{}).then(()=>{wifiScanTimer=setTimeout(pollWifiScan,500)}).catch(err=>{
+      $("#wifiScanBtn").disabled=false;
+      setWifiNote("Wi-Fi scan error · "+err.message);
+    });
+  }
+  function pollWifiConnection(expectedSsid,deadline){
+    clearTimeout(wifiConnectTimer);
+    apiGet("/api/status").then(data=>{
+      applyStatus(data);
+      const wifi=data.wifi||{};
+      if(wifi.staConnected&&(!expectedSsid||wifi.staSsid===expectedSsid)){
+        setWifiNote(tr("wifiConnected")+" · "+wifi.staIp);
+        toast(tr("wifiConnected")+" · "+wifi.staIp);
+        return;
+      }
+      if(Date.now()>=deadline){setWifiNote("Wi-Fi timeout");return}
+      wifiConnectTimer=setTimeout(()=>pollWifiConnection(expectedSsid,deadline),1000);
+    }).catch(()=>{
+      if(Date.now()>=deadline){setWifiNote("Wi-Fi timeout");return}
+      wifiConnectTimer=setTimeout(()=>pollWifiConnection(expectedSsid,deadline),1000);
+    });
+  }
+  function saveWifiSettings(){
+    const ssid=$("#staSsid").value.trim();
+    if(!ssid){setWifiNote(tr("selectedNetwork"));return}
+    const payload={
+      staSsid:ssid,
+      staPass:$("#staPass").value,
+      staStatic:0
+    };
+    state.selectedWifiSsid=ssid;
+    setWifiNote(tr("connectingWifi")+" · "+ssid);
+    apiPost("/api/settings",payload).then(()=>{
+      log(tr("wifi")+" · "+ssid+" · DHCP");
+      wifiConnectTimer=setTimeout(()=>pollWifiConnection(ssid,Date.now()+25000),1200);
+    }).catch(err=>toast("Wi-Fi error "+err.message));
+  }
+  function saveStaticIp(){
+    const lastOctet=Math.max(2,Math.min(254,Number($("#staticLastOctet").value)||150));
+    $("#staticLastOctet").value=String(lastOctet);
+    setWifiNote(tr("staticIp")+" · ."+lastOctet);
+    apiPost("/api/wifi/static",{lastOctet:lastOctet}).then(data=>{
+      toast(tr("wifiStaticSaved")+" · "+data.ip);
+      log(tr("wifiStaticSaved")+" · "+data.ip);
+      wifiConnectTimer=setTimeout(()=>pollWifiConnection(state.selectedWifiSsid,Date.now()+25000),1200);
+    }).catch(err=>setWifiNote("Static IP error · "+err.message));
+  }
+	function waitForAdminAfterReboot(kind,deadline){
+	  clearTimeout(adminPollTimer);
+	  adminGet("/api/admin/status").then(data=>{
+	    const ota=data.ota||{};
+	    if(!ota.active){
+	      setOtaProgress(100,kind+" complete · online");
+	      $("#uploadFw").disabled=false;
+	      $("#uploadFs").disabled=false;
+	      setTimeout(()=>location.reload(),900);
+	      return;
+	    }
+	    adminPollTimer=setTimeout(()=>waitForAdminAfterReboot(kind,deadline),900);
+	  }).catch(()=>{
+	    setOtaProgress(100,kind+" uploaded · restarting...");
+	    if(Date.now()<deadline) adminPollTimer=setTimeout(()=>waitForAdminAfterReboot(kind,deadline),900);
+	    else{
+	      $("#uploadFw").disabled=false;
+	      $("#uploadFs").disabled=false;
+	      setOtaProgress(100,kind+" uploaded · reconnect manually");
+	    }
+	  });
+	}
+	  function uploadAdminFile(kind){
+	    const fileEl=$("#"+(kind==="firmware"?"fwFile":"fsFile"));
+	    const file=fileEl&&fileEl.files&&fileEl.files[0];
+	    if(!file){setOtaProgress(0,"Select a .bin first");return}
+    if(!/\.bin$/i.test(file.name)){setOtaProgress(0,"Binary .bin required");return}
+    const path=kind==="firmware"?"/api/admin/update/firmware":"/api/admin/update/littlefs";
+    const xhr=new XMLHttpRequest();
+    const form=new FormData();
+    form.append("update",file,file.name);
+    xhr.open("POST",apiBase+path,true);
+    xhr.setRequestHeader("Authorization","Basic "+btoa(state.adminUser+":"+state.adminPass));
+    xhr.upload.onprogress=e=>{
+      if(e.lengthComputable){
+        const pct=Math.round(e.loaded*100/e.total);
+        setOtaProgress(pct,kind+" "+pct+"% · "+Math.round(e.loaded/1024)+" KB");
+      }else{
+        setOtaProgress(12,kind+" uploading...");
+      }
+    };
+    xhr.onload=()=>{
+      let data={};
+      try{data=JSON.parse(xhr.responseText||"{}")}catch(_){}
+      if(xhr.status>=200&&xhr.status<300&&data.ok){
+        setOtaProgress(100,kind+" uploaded · rebooting");
+        clearTimeout(adminPollTimer);
+        adminPollTimer=setTimeout(()=>waitForAdminAfterReboot(kind,Date.now()+45000),2300);
+      }else{
+        $("#uploadFw").disabled=false;
+        $("#uploadFs").disabled=false;
+        setOtaProgress(0,kind+" failed: "+(data.error||data.msg||xhr.status));
+      }
+    };
+    xhr.onerror=()=>{
+      $("#uploadFw").disabled=false;
+      $("#uploadFs").disabled=false;
+      setOtaProgress(0,kind+" network error");
+    };
+	    setOtaProgress(1,kind+" starting...");
+	    $("#uploadFw").disabled=true;
+	    $("#uploadFs").disabled=true;
+	    xhr.send(form);
+	  }
+	  function setWheelSelection(col,value,center){
+	    if(!col) return;
+	    const prefix=col.dataset.wheelPrefix;
+	    const part=col.dataset.wheelPart;
+	    const input=$("#"+prefix+part);
+	    if(input) input.value=value;
+	    let active=null;
+	    col.querySelectorAll(".time-wheel-option").forEach(opt=>{
+	      const match=String(opt.dataset.wheelValue)===String(value);
+	      opt.classList.toggle("active",match);
+	      opt.setAttribute("aria-selected",match?"true":"false");
+	      if(match) active=opt;
+	    });
+	    if(center&&active){
+	      const top=active.offsetTop-(col.clientHeight/2)+(active.clientHeight/2);
+	      col.dataset.programmaticScroll="1";
+	      col.scrollTo({top:Math.max(0,top),behavior:"smooth"});
+	      setTimeout(()=>{col.dataset.programmaticScroll="0"},220);
+	    }
+	  }
+	  function selectCenteredWheelValue(col){
+	    if(!col) return;
+	    const rect=col.getBoundingClientRect();
+	    const center=rect.top+rect.height/2;
+	    let best=null;
+	    let bestDelta=Infinity;
+	    col.querySelectorAll(".time-wheel-option").forEach(opt=>{
+	      const r=opt.getBoundingClientRect();
+	      const delta=Math.abs((r.top+r.height/2)-center);
+	      if(delta<bestDelta){bestDelta=delta;best=opt}
+	    });
+	    if(best) setWheelSelection(col,best.dataset.wheelValue,false);
+	  }
+	  function centerActiveWheel(col){
+	    const active=col&&col.querySelector(".time-wheel-option.active");
+	    if(!active) return;
+	    const top=active.offsetTop-(col.clientHeight/2)+(active.clientHeight/2);
+	    col.dataset.programmaticScroll="1";
+	    col.scrollTo({top:Math.max(0,top),behavior:"auto"});
+	    setTimeout(()=>{col.dataset.programmaticScroll="0"},120);
+	  }
+	  function wireTimeWheels(){
+	    $$(".time-wheel-col").forEach(col=>{
+	      centerActiveWheel(col);
+	      let scrollTimer=0;
+	      col.addEventListener("scroll",()=>{
+	        if(col.dataset.programmaticScroll==="1") return;
+	        clearTimeout(scrollTimer);
+	        scrollTimer=setTimeout(()=>{
+	          selectCenteredWheelValue(col);
+	          updateScheduleSpanNote();
+	          saveScheduleSettings(true);
+	        },150);
+	      },{passive:true});
+	    });
+	    $$(".time-wheel-option").forEach(opt=>opt.addEventListener("click",()=>{
+	      const col=opt.closest(".time-wheel-col");
+	      setWheelSelection(col,opt.dataset.wheelValue,true);
+	      updateScheduleSpanNote();
+	      saveScheduleSettings(true);
+	    }));
+	  }
+	  function readScheduleForm(){
+	    const current=scheduleState();
+	    const editorMode=scheduleEditorMode(current);
+	    let visibleMask=0;
+	    $$("[data-day]").forEach(btn=>{if(btn.classList.contains("active")) visibleMask|=(1<<Number(btn.dataset.day))});
+	    const speedBtn=$(".schedule-speed.active");
+	    const speedPct=clampPct($("#scheduleSpeedRange")?$("#scheduleSpeedRange").value:current.speedPercent);
+	    const dimmerPct=clampDimmer($("#scheduleDimmerRange")?$("#scheduleDimmerRange").value:current.ledDimmerPercent);
+	    const fallback=scheduleEditorTimes(current,editorMode);
+	    const startMin=clockPartsToMinutes("scheduleStart",fallback.startMin);
+	    const endMin=clockPartsToMinutes("scheduleEnd",fallback.endMin);
+	    const daily=current.daily.map(day=>Object.assign({},day));
+	    if(editorMode===2){
+	      daily[state.scheduleSelectedDay].startMin=startMin;
+	      daily[state.scheduleSelectedDay].endMin=endMin;
+	      daily.forEach((day,i)=>{day.enabled=!!(visibleMask&(1<<i))});
+	    }
+	    const mode=$("#scheduleWeekly")&&$("#scheduleWeekly").checked?1:($("#scheduleDaily")&&$("#scheduleDaily").checked?2:0);
+	    const next=Object.assign({},current,{
+	      enabled:mode!==0,mode:mode,
+	      daysMask:editorMode===1?visibleMask:current.daysMask,
+	      startMin:editorMode===1?startMin:current.startMin,
+	      endMin:editorMode===1?endMin:current.endMin,
+	      dailyDaysMask:editorMode===2?visibleMask:current.dailyDaysMask,
+	      daily:daily,
+	      speed:speedBtn?Number(speedBtn.dataset.scheduleSpeed):3,
+	      speedPercent:speedPct,ledDimmerPercent:dimmerPct,tempRule:0,tempF:75
+	    });
+	    state.config.schedule=next;
+	    return schedulePayload(next);
+	  }
+  function schedulePayload(sch){
+    const payload={
+      enabled:Number(sch.mode)!==0?1:0,mode:Number(sch.mode)||0,
+      daysMask:Number(sch.daysMask)||0,startMin:Number(sch.startMin)||0,endMin:Number(sch.endMin)||0,
+      dailyDaysMask:Number(sch.dailyDaysMask)||0,
+      speed:Number(sch.speed)||1,speedPercent:clampPct(sch.speedPercent),
+      ledDimmerPercent:clampDimmer(sch.ledDimmerPercent),tempRule:0,tempF:75,save:1
+    };
+    (sch.daily||[]).forEach((day,i)=>{
+      payload["d"+i+"StartMin"]=Number(day.startMin)||0;
+      payload["d"+i+"EndMin"]=Number(day.endMin)||0;
+    });
+    return payload;
+  }
+  function scheduleClockText(minutes){
+    const p=minutesToClockParts(minutes);
+    return p.hour+":"+String(p.minute).padStart(2,"0")+" "+p.ampm;
+  }
+  function scheduleActivityText(){
+    const sch=state.config.schedule||scheduleState();
+    const names=state.lang==="es"?["Lunes","Martes","Miercoles","Jueves","Viernes","Sabado","Domingo"]:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+    const mode=Number(sch.mode)||0;
+    if(!mode) return tr("weeklySchedule")+": OFF";
+    if(mode===2){
+      const i=state.scheduleSelectedDay;
+      const day=(sch.daily||[])[i]||{enabled:false,startMin:0,endMin:0};
+      const span=scheduleSpanKey(day.startMin,day.endMin);
+      if(span==="invalidSchedule") return "Daily "+names[i]+": "+tr(span);
+      const endDay=span==="overnight"?names[(i+1)%7]:names[i];
+      return "Daily "+names[i]+" "+(day.enabled?"ON":"OFF")+": "+scheduleClockText(day.startMin)+" -> "+endDay+" "+scheduleClockText(day.endMin);
+    }
+    const selected=names.filter((_,i)=>Number(sch.daysMask)&(1<<i)).join(", ")||"--";
+    const span=scheduleSpanKey(sch.startMin,sch.endMin);
+    return "Weekly "+selected+": "+(span==="invalidSchedule"?tr(span):scheduleClockText(sch.startMin)+" -> "+scheduleClockText(sch.endMin)+" ("+tr(span)+")");
+  }
+  function postSchedulePayload(payload,quiet){
+    state.scheduleDirtyUntil=Date.now()+2500;
+    return apiPost("/api/schedule",payload).then(()=>{
+      if(!quiet) toast(tr("weeklySchedule")+" OK");
+      const activity=scheduleActivityText();
+      if(activity!==state.lastScheduleLog){state.lastScheduleLog=activity;log(activity)}
+      refreshStatus();
+    }).catch(err=>toast("Schedule error "+err.message));
+  }
+  function saveScheduleSettings(quiet){
+    return postSchedulePayload(readScheduleForm(),quiet);
+  }
+  function saveScheduleSettingsDebounced(){
+    clearTimeout(scheduleSaveTimer);
+    scheduleSaveTimer=setTimeout(()=>saveScheduleSettings(true),300);
+  }
+  function updateTimerCountdownDisplay(){
+    const el=$("#timerCountdown");
+    if(el) el.textContent=timerCountdownText();
+  }
+  function rerenderTimeDetail(){
+    $("#detailBody").innerHTML=detailHTML("time");
+    wireDetail("time");
+  }
+  function wireDetail(type){
+    if(type==="temperature"){
+      renderTempHistoryDay();
+      const sel=$("#tempDaySelect");
+      if(sel) sel.addEventListener("change",renderTempHistoryDay);
+    }
+    if(type==="speed"){
+      const sr=$("#dSpeedRange"),sn=$("#dSpeedNumber"),ce=$("#dCustomEnabled");
+      const update=source=>{
+        const pct=clampPct(source==="range"?sr.value:sn.value);
+        sr.value=pct;sn.value=pct;$("#speedRange").value=pct;$("#speedNumber").value=pct;
+        $("#dSpeedValue").textContent=pct+"%";$("#dVoltageValue").textContent=estimateVac(pct)+" VAC";
+        state.config.customSpeedPercent=pct;
+      };
+      sr.addEventListener("input",()=>update("range"));
+      sn.addEventListener("input",()=>update("number"));
+      ce.addEventListener("change",()=>{$("#customEnabled").checked=ce.checked;setSliderMode()});
+      $("#dApplyFan").addEventListener("click",()=>{update("number");applyFan(false,true)});
+      $("#dPowerOff").addEventListener("click",powerOff);
+      $$(".detail-preset").forEach(btn=>btn.addEventListener("click",()=>{sr.value=btn.dataset.speed;update("range");applyFan(false,true)}));
+    }
+    if(type==="globalLed"){
+      const dc=$("#dAllColor");
+      const update=()=>{
+        setGlobalColorLocal(dc.value);
+      };
+      dc.addEventListener("input",update);
+      $("#dLightsOn").addEventListener("change",()=>{$("#lightsOn").checked=$("#dLightsOn").checked;setLights()});
+      $("#dPreviewAll").addEventListener("click",()=>{update();sendAll(false)});
+      $("#dSaveAll").addEventListener("click",()=>{update();sendAll(true)});
+      $("#dClearPreview").addEventListener("click",functionLeds);
+    }
+    if(type==="leds"){
+      $$("[data-toggle-led]").forEach(btn=>btn.addEventListener("click",()=>toggleLed(Number(btn.dataset.toggleLed))));
+      state.config.leds.forEach((_,i)=>{
+        const enabled=$("#dLedEnabled"+i);
+        if(enabled) enabled.addEventListener("change",()=>toggleLed(i,enabled.checked));
+      });
+      $$("[data-preview-led]").forEach(btn=>btn.addEventListener("click",()=>sendLed(Number(btn.dataset.previewLed),false,true)));
+      $$("[data-save-led]").forEach(btn=>btn.addEventListener("click",()=>sendLed(Number(btn.dataset.saveLed),true,true)));
+      state.config.leds.forEach((_,i)=>{
+        const el=$("#dLedColor"+i);
+        if(!el) return;
+        el.addEventListener("input",()=>{
+          const meta=colorMeta(el.value);
+          $("#dLedHex"+i).textContent=meta.hex;$("#dLedName"+i).textContent=meta.name;$("#dLedRgb"+i).textContent=meta.rgbText;
+        });
+      });
+    }
+    if(type==="time"){
+      $("#dSyncTime").addEventListener("click",syncTime);
+      $$("[data-day]").forEach(btn=>btn.addEventListener("click",()=>{
+	        readScheduleForm();
+	        const sch=state.config.schedule;
+	        const day=Number(btn.dataset.day);
+	        const editorMode=scheduleEditorMode(sch);
+	        if(editorMode===2){
+	          state.scheduleSelectedDay=day;
+	          writeLocal("fanScheduleDay",String(day));
+	          sch.daily[day].enabled=!sch.daily[day].enabled;
+	          sch.dailyDaysMask=sch.daily.reduce((mask,item,i)=>item.enabled?mask|(1<<i):mask,0);
+	        }else{
+	          sch.daysMask=Number(sch.daysMask)^(1<<day);
+	        }
+	        const payload=schedulePayload(sch);
+	        rerenderTimeDetail();
+	        postSchedulePayload(payload,true);
+	      }));
+	      [["scheduleWeekly",1],["scheduleDaily",2]].forEach(([id,mode])=>{
+	        $("#"+id).addEventListener("change",event=>{
+	          readScheduleForm();
+	          const sch=state.config.schedule;
+	          sch.mode=event.target.checked?mode:(Number(sch.mode)===mode?0:Number(sch.mode)||0);
+	          sch.enabled=sch.mode!==0;
+	          state.scheduleEditorMode=mode;
+	          const payload=schedulePayload(sch);
+	          rerenderTimeDetail();
+	          postSchedulePayload(payload,false);
+	        });
+	      });
+	      wireTimeWheels();
+	      $$(".schedule-speed").forEach(btn=>btn.addEventListener("click",()=>{
+	        $$(".schedule-speed").forEach(b=>b.classList.remove("active"));
+	        btn.classList.add("active");
+	        const pct=clampPct(btn.dataset.schedulePercent);
+	        $("#scheduleSpeedRange").value=pct;
+	        $("#scheduleSpeedValue").textContent=pct+"%";
+	        saveScheduleSettings(false);
+	      }));
+      const scheduleSpeedRange=$("#scheduleSpeedRange");
+      const scheduleDimmerRange=$("#scheduleDimmerRange");
+      scheduleSpeedRange.addEventListener("input",()=>{
+        const pct=clampPct(scheduleSpeedRange.value);
+        scheduleSpeedRange.value=pct;
+        $("#scheduleSpeedValue").textContent=pct+"%";
+        $$(".schedule-speed").forEach(b=>b.classList.remove("active"));
+        saveScheduleSettingsDebounced();
+      });
+      scheduleDimmerRange.addEventListener("input",()=>{
+        const pct=clampDimmer(scheduleDimmerRange.value);
+        scheduleDimmerRange.value=pct;
+        $("#scheduleDimmerValue").textContent=pct+"%";
+        saveScheduleSettingsDebounced();
+      });
+      $$(".timer-speed").forEach(btn=>btn.addEventListener("click",()=>{
+        state.timerSpeed=Number(btn.dataset.timerSpeed)===2?2:1;
+        writeLocal("fanTimerSpeed",String(state.timerSpeed));
+        $$(".timer-speed").forEach(b=>b.classList.toggle("active",Number(b.dataset.timerSpeed)===state.timerSpeed));
+      }));
+      $("#dSetDuration").addEventListener("click",()=>{
+        const minutes=Math.max(1,Math.min(1440,Number($("#durationMinutes").value)||30));
+        apiPost("/api/timer",{durationMinutes:minutes,speed:state.timerSpeed}).then(()=>{toast("Timer "+minutes+" min");refreshStatus().then(updateTimerCountdownDisplay)});
+      });
+      $("#dClearTimer").addEventListener("click",()=>apiPost("/api/timer",{clear:1}).then(()=>{toast("Timer OFF");refreshStatus().then(updateTimerCountdownDisplay)}));
+    }
+  }
+  function openDetail(type){
+    state.detail=type;
+    $("#detailTitle").textContent=tr({temperature:"detailTemp",fans:"detailFans",speed:"detailSpeed",directions:"detailDirections",leds:"detailLeds",globalLed:"detailGlobalLed",time:"detailTime",activity:"detailActivity",system:"detailSystem"}[type]||"detailSystem");
+    $("#detailBody").innerHTML=detailHTML(type);
+    $("#detailOverlay").classList.add("open");
+    $("#detailOverlay").setAttribute("aria-hidden","false");
+    document.body.style.overflow="hidden";
+    wireDetail(type);
+    $("#detailBack").focus();
+  }
+  function closeDetail(){
+    $("#detailOverlay").classList.remove("open");
+    $("#detailOverlay").setAttribute("aria-hidden","true");
+    document.body.style.overflow="";
+    state.detail=null;
+  }
+  function wireEvents(){
+    $("#loginForm").addEventListener("submit",e=>{
+      e.preventDefault();
+      loginWithForm();
+    });
+    $("#themeToggle").addEventListener("click",()=>{
+      setTheme(state.theme==="dark"?"light":"dark");
+      log(tr("activityTheme")+": "+state.theme);
+    });
+    $("#langToggle").addEventListener("click",()=>{
+      state.lang=state.lang==="es"?"en":"es";
+      writeLocal("fanLang",state.lang);
+      initActivity();
+      renderTranslations();
+      renderClock();
+      renderActivity();
+      if(state.status) applyStatus(state.status);
+      log(tr("activityLang"));
+    });
+    $("#refreshBtn").addEventListener("click",()=>refreshAll());
+    $("#powerOnTop").addEventListener("click",fanOnHigh);
+    $("#powerOffTop").addEventListener("click",powerOff);
+    $("#fanOnBtn").addEventListener("click",fanOn);
+    $("#fanOffBtn").addEventListener("click",powerOff);
+    $("#customEnabled").addEventListener("change",setSliderMode);
+    $("#speedRange").addEventListener("input",()=>speedInput("range"));
+    $("#speedNumber").addEventListener("input",()=>speedInput("number"));
+    $("#buttonEnabled").addEventListener("change",setButtonEnabled);
+    $("#wifiScanBtn").addEventListener("click",scanWifiNetworks);
+    $("#staSsid").addEventListener("input",event=>{state.selectedWifiSsid=event.target.value.trim()});
+    $("#saveWifi").addEventListener("click",saveWifiSettings);
+    $("#saveStaticIp").addEventListener("click",saveStaticIp);
+    $("#adminStatus").addEventListener("click",()=>updateAdminStatus().catch(()=>{}));
+    $("#uploadFw").addEventListener("click",()=>uploadAdminFile("firmware"));
+    $("#uploadFs").addEventListener("click",()=>uploadAdminFile("littlefs"));
+    $("#lightsOn").addEventListener("change",setLights);
+    $("#allColor").addEventListener("input",()=>changeGlobalColor(false));
+    $("#ledDimmerRange").addEventListener("input",changeDimmer);
+    $("#saveAllBtn").addEventListener("click",()=>sendAll(true,false));
+    $("#functionLedsBtn").addEventListener("click",e=>{e.stopPropagation();functionLeds()});
+    $("#saveLedPaletteBtn").addEventListener("click",e=>{e.stopPropagation();saveLedPalette()});
+    $$("#presets .preset").forEach(btn=>btn.addEventListener("click",e=>{
+      e.stopPropagation();
+      const pct=clampPct(btn.dataset.speed);
+      state.sliderInputEnabled=true;
+      writeLocal("fanSliderEnabled","1");
+      syncSliderEnabledState();
+      setSpeedSelection(pct);
+      if(fanModeOn()) applyFan(false,true);
+      else saveSpeedSelection(false);
+    }));
+    $$("[data-original-speed]").forEach(btn=>btn.addEventListener("click",e=>{
+      e.stopPropagation();
+      setSelectedOriginal(Number(btn.dataset.originalSpeed),state.originalSetpointF,true);
+    }));
+    $$("[data-original-temp]").forEach(btn=>btn.addEventListener("click",e=>{
+      e.stopPropagation();
+      setSelectedOriginal(state.originalSpeed,Number(btn.dataset.originalTemp),true);
+    }));
+    $$(".expandable").forEach(card=>{
+      card.addEventListener("click",e=>{
+        if(e.target.closest("button,input,select,label,a")) return;
+        if(!card.dataset.detail) return;
+        openDetail(card.dataset.detail);
+      });
+      card.addEventListener("keydown",e=>{
+        if((e.key==="Enter"||e.key===" ")&&!e.target.closest("button,input,select")){
+          if(!card.dataset.detail) return;
+          e.preventDefault();openDetail(card.dataset.detail);
+        }
+      });
+    });
+    $$(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>showView(btn.dataset.viewTarget)));
+    $("#detailBack").addEventListener("click",closeDetail);
+    $("#detailClose").addEventListener("click",closeDetail);
+    $("#detailOverlay").addEventListener("click",e=>{if(e.target===$("#detailOverlay")) closeDetail()});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape") closeDetail()});
+  }
+
+  document.body.dataset.theme=state.theme;
+  initActivity();
+  wireEvents();
+  setLoginFormFromStore();
+  renderTranslations();
+  renderClock();
+  renderActivity();
+  applyConfig(state.config);
+  showView("home");
+  checkSession();
+  if("serviceWorker" in navigator&&window.isSecureContext){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("/service-worker.js").catch(()=>{}));
+  }
+  setInterval(renderClock,1000);
+  setInterval(()=>{if(state.loggedIn) refreshStatus()},1500);
+})();
+</script>
+</body>
+</html>

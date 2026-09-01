@@ -1,0 +1,19 @@
+# Build output
+build/
+*.bin
+*.elf
+*.map
+
+# Local IDE and operating-system state
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Never publish raw captures or household configuration
+raw/
+*.HEIC
+*.MOV
+*.MP4
+secrets.*
