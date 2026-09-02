@@ -25,7 +25,9 @@ single-page application with Home/System views and glass-styled detail overlays.
 
 Unknown devices see an empty login form. A successful login can be remembered in
 that browser. Initial page synchronization performs only GET requests; opening a
-second phone must not replay stale controls or interrupt an active schedule.
+second phone does not replay stale controls. Motor gate timing runs in a separate
+real-time task, so serving the login or application assets cannot interrupt an
+already active fan mode.
 
 The default generic app login is `thankyou` / `youarewelcome`. It is not a cloud
 identity system and should be changed during commissioning.

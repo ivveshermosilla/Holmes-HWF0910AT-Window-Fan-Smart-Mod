@@ -14,15 +14,21 @@
 
 ## Current Evidence
 
-- Installed version shown by the device: `0.3.10-led-state`.
+- Reference version: `0.3.14-dual-core-fire`.
 - Zero-cross telemetry near 120 edge events per second on 60 Hz mains.
 - DS18B20 live values with no current read-error accumulation.
 - MOC remains disarmed while OFF; commanded pulse count increments only when armed.
 - Four slider optocoupler channels expose live activity and Intake/Exhaust labels.
 - Desktop and mobile screenshots were captured directly from the installed PWA.
-- The reorganized public sketch compiled at 1,075,137 bytes (82% of the app
-  partition) with 50,348 bytes (15%) of global RAM, and its LittleFS image built
-  successfully at the configured `0x160000` size.
+- The operating sketch compiled at 1,077,365 bytes (82% of the app partition)
+  with 50,380 bytes (15%) of global RAM. The sanitized public sketch compiled at
+  1,077,233 bytes with the same global RAM use.
+- Twelve complete PWA downloads plus twelve new-device logins completed with no
+  HTTP failures while HIGH remained active.
+- During that test `firePulseCount` reached 7,714, zero-cross stayed at 120.0 Hz,
+  and the maximum fire gap was 8,437 us, below a missed 60 Hz half-cycle.
+- DS18B20 recorded zero read, reset, and CRC errors through 67 successful resets
+  during the same motor/network load test.
 
 ## Limitations
 

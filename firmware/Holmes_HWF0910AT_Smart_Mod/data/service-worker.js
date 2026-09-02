@@ -1,4 +1,4 @@
-const CACHE_NAME="hwf0910at-pwa-v3";
+const CACHE_NAME="hwf0910at-pwa-v4";
 const APP_SHELL=[
   "/",
   "/index.html",

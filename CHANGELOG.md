@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.14-dual-core-fire - 2026-09-01
+
+- Moved zero-cross synchronized MOC timing to a dedicated high-priority task so
+  PWA loading and login cannot interrupt motor firing.
+- Added pulse-gap telemetry for live regression testing.
+- Corrected a microsecond-wait rollover race found during live pulse testing.
+- Pinned phase firing away from the application/OneWire core so motor timing,
+  PWA serving and DS18B20 acquisition cannot preempt one another.
+- Corrected front/rear project photography, hardware reuse, replacement wiring,
+  new-button construction, BOM, and module-level connection documentation.
+
 ## 0.3.10-led-state - 2026-09-01
 
 - Made the digital LED row reflect the physical function indicators.

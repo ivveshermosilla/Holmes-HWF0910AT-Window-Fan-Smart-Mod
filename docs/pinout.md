@@ -10,7 +10,7 @@
 | 21 | `LED_DATA` | SN74AHCT125 input | Seven addressable indicator LEDs |
 | 47 | `TRIAC_TRIGGER` | 220 R to MOC3023 input | Timed gate pulse, normally low |
 | 39 | `TEMP` | DS18B20 data | One-wire temperature bus with pull-up |
-| 8 | `BUTTON` | Original push button | Active-low, debounced, short/long press |
+| 8 | `BUTTON` | New perfboard push button | Active-low, debounced, short/long press |
 | 48 | `BOARD_LED` | ESP32-S3 onboard RGB/red LED | Best-effort software OFF by default |
 
 ## Indicator Order
@@ -34,3 +34,6 @@ for the powered session; "Current function" restores mode-driven rendering.
 ESP32 ground belongs only to the isolated 5 V domain. It must never be bonded to
 the mains-neutral WAGO connection. Signals crossing the boundary do so through
 the H11AA1 or MOC3023 optical interfaces.
+
+For DIP pin numbers, power terminals, slider contacts and passive networks, see
+[Module Connections](module-connections.md).

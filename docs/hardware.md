@@ -1,81 +1,97 @@
 # Hardware
 
-## Main Modules
+## Design Boundary
 
-| Module | Role | Notes |
-| --- | --- | --- |
-| ESP32-S3 controller | Logic, Wi-Fi, PWA, NVM, scheduling | Exact dev-board SKU was not confirmed |
-| HLK-10M05 | Isolated 120 VAC to 5 V supply | Keeps controller ground isolated from neutral |
-| BTA08-600C | Main AC switching TRIAC | Drives the shared motor power path |
-| MOC3023 | Random-phase optotriac | Transfers gate commands across isolation |
-| H11AA1 x5 | AC optocoupler sensing | One zero-cross plus four slider contacts |
-| SN74AHCT125 | 3.3-to-5 V LED data buffer | Drives the addressable indicator chain |
-| WS2812-compatible LEDs x7 | Function indicators | Through-hole parts; exact SKU unconfirmed |
-| DS18B20 | Digital temperature sensor | One-wire acquisition on GPIO39 |
-| MOV 20D241K | Surge suppression | Mains protection network |
-| 33 nF X2, 275 VAC | Snubber capacitor | Used with the TRIAC resistor network |
-| WAGO 221-415 | Protected mains distribution | Mechanical connection in the enclosure |
-| Original push button | Local control | Reused only as an isolated ESP32 logic input |
-| Original sliders | Direction and position | Six-pin INTAKE/OFF/EXHAUST mechanisms retained |
-| Original motors/CBB61 | Airflow power stage | Existing motors and dual capacitor retained |
+The Holmes HWF0910AT Smart Mod is a selective reuse of a working appliance, not
+a drop-in board replacement. The original mains control board was removed. The
+two motors, dual CBB61 capacitor, direction sliders, enclosure and mechanical
+air path remain part of the fan; the controller, sensing, user button, lighting,
+power protection and isolated low-voltage domain were rebuilt.
 
-## Retained, Reworked, And Added Hardware
+## Power And Isolation
 
-The retrofit was selective reuse, not a drop-in controller swap and not a
-complete rebuild of every mechanical part.
+HOT enters a T1.6A/250 V slow-blow fuse. The protected `L_FUSED` node supplies
+the HLK-10M05, MOV, zero-cross detector, slider sensing feeds and TRIAC stage.
+The MOV 20D241K is connected between `L_FUSED` and neutral, after the fuse.
 
-**Original parts retained:**
+The HLK-10M05 creates the isolated 5 V domain. Its output passes through an
+external 5 V over-voltage protection module before reaching the motherboard
+bus. ESP32, SN74AHCT125, WS2812 LEDs, H11 output transistors and MOC input all
+share that isolated domain. A 1000 uF/16 V capacitor is installed across the
+protected +5 V and isolated GND bus.
 
-- Both AC motors, blades, grilles, enclosure, and serviceable fasteners.
-- The original dual-section CBB61 motor capacitor, marked `2.5 uF + 2.5 uF`,
-  `250 VAC`, `50/60 Hz`, `MAX TEMP 70 C`.
-- Both six-pin mechanical direction sliders and the original push button.
-- Selected original conductors whose route and condition were physically
-  confirmed, including brown/yellow auxiliary slider conductors repurposed for
-  position sensing and the former auxiliary common repurposed as `N_SENSE`.
+Neutral and isolated GND are never bonded. Signals cross the boundary only
+through the five H11AA1 optocouplers and the MOC3023.
 
-**Original parts removed or replaced:**
+## Retained And Replaced Work
 
-- The complete original motherboard, undocumented controller, non-isolated
-  low-voltage supply, TRIAC-control logic, and original indicator electronics.
-- Original wiring and terminations at multiple slider/controller points where
-  the new power distribution, isolation, or sensing topology required it.
-- The original indicator lamps were replaced by seven addressable 5 V LEDs.
+The motors, blades, CBB61, both direction-slider mechanisms and enclosure were
+retained after inspection and service. The original controller, indicator
+electronics, low-voltage supply and physical button were not carried into the
+new circuit.
 
-**New work and components:**
+The original yellow, brown, blue and black slider conductors were removed and
+replaced with silicone-insulated wire. The replacement improved consistency,
+flexibility during routing, and thermal tolerance compared with the original
+PVC insulation. Additional slider-sense conductors were added because the
+factory appliance did not expose every contact required for full A/OFF/B
+reporting.
 
-- New conductors were added where the original fan had no independent slider
-  sensing route, including the additional pin-6 branches for the H11AA1 inputs.
-- New fused line distribution, MOV protection, WAGO 221 connectors, isolated
-  HLK supply, ESP32-S3 controller, optocouplers, MOC/TRIAC stage, LED level
-  shifter, addressable LEDs, DS18B20, resistors, capacitors, insulation, and
-  mechanical mounting were installed.
-
-No statement that a part was "retained" should be read as meaning its original
-wiring remained untouched. Several slider conductors and terminations were
-deliberately replaced or reassigned after continuity tracing.
+The new GPIO8 button is mounted on the replacement perfboard. A thin plastic
+spacer matching the external plastic actuator diameter, together with Kapton,
+sets the operating height. Unneeded original plastic supports were trimmed only
+where they obstructed correct closure around the new components.
 
 ## TRIAC And Optotriac Network
 
+With the BTA08-600C text facing the viewer and leads pointing down, this project
+uses pin 1 as MT1, pin 2 as MT2 and pin 3 as Gate:
+
 ```text
-ESP GPIO47 -- 220 R -- MOC3023 pin 1
-isolated GND --------- MOC3023 pin 2
-MOC3023 pin 4 -------- BTA08 gate
+GPIO47 -- 220 R -- MOC3023 pin 1
+isolated GND ----- MOC3023 pin 2
+MOC3023 pin 4 ---- BTA08 pin 3 / Gate
 MOC3023 pin 6 -- 200 R / 2 W -- node J
-BTA08 MT2 ------ 200 R / 2 W -- node J
-node J --------- 33 nF X2 ------- BTA08 MT1
-BTA08 MT1 ------ fused line
-BTA08 MT2 ------ switched output to sliders/motors
-BTA08 gate ----- 330 R ----------- MT1
+BTA08 pin 2 / MT2 -- 200 R / 2 W -- node J
+node J -- 33 nF X2 / 275 VAC -- BTA08 pin 1 / MT1
+BTA08 pin 1 / MT1 -- L_FUSED
+BTA08 pin 2 / MT2 -- TRIAC_OUT to both slider power commons
+BTA08 pin 3 / Gate -- 330 R -- BTA08 pin 1 / MT1
 ```
 
-The exact installed resistor, fuse, and spacing values must be verified against
-the physical assembly before any reproduction. Photographs are evidence of this
-specific prototype, not a manufacturing drawing.
+The two 200 Ohm resistors form a 400 Ohm path from MT2 to MOC pin 6 through
+node J. The capacitor is an X2 mains-rated part. GPIO21 is not part of this
+network; it drives the LED buffer.
+
+## Slider Structure
+
+Each original six-pin slider contains two mechanically linked poles. In the
+documented top view the terminal layout is:
+
+```text
+1  6
+2  5
+3  4
+```
+
+Pins 1-2-3 form the motor-power pole and pins 6-5-4 form the sensing pole. Pin 2
+is the power common fed by `TRIAC_OUT`; pins 1 and 3 select the original motor/
+CBB61 direction branches. Pin 5 is the sensing common. Position A closes the A
+branch, center OFF closes neither branch, and position B closes the B branch.
+Power and sensing commons are separate networks.
+
+One 22 kOhm/2 W feed is shared by the two H11AA1 inputs associated with each
+slider. Five individual 10 kOhm pull-ups are installed on the isolated H11
+collector outputs: one zero-cross channel and four slider channels.
 
 ## Physical Condition
 
-The fan arrived operational but with the dust and lint expected after extended
-airflow duty. Its condition was recorded before disassembly. Housing, grilles,
-and blades were then cleaned before final integration; the before/after record
-is preserved in [Gallery](gallery.md).
+The fan was operational when work began, but its internal electrical condition
+and undocumented controller behavior were not yet known. Dust and lint had
+accumulated during normal extended airflow service, as commonly occurs in a
+window fan. The condition was recorded before disassembly, and the enclosure,
+grilles and blades were serviced before final integration. The photographic
+record documents the improvement without claiming a pristine restoration.
+
+See [BOM](bom.md), [ESP32 Pinout](pinout.md), [Module Connections](module-connections.md)
+and [Safety](safety.md).

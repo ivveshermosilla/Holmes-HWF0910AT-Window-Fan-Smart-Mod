@@ -1,10 +1,12 @@
 # Holmes HWF0910AT Window Fan Smart Mod
 
-![Holmes HWF0910AT after cleaning and retrofit](assets/photos/10-cleaned-front-view.jpg)
+| Front after service | Rear after service |
+| --- | --- |
+| ![Holmes HWF0910AT front after service](assets/photos/09-front-after-service.jpg) | ![Holmes HWF0910AT rear after service](assets/photos/10-rear-after-service.jpg) |
 
-An independent retrofit of a working Holmes HWF0910AT twin window fan. The
+An independent Smart Mod of a working Holmes HWF0910AT twin window fan. The
 project replaces the original non-isolated control electronics with an
-ESP32-S3 controller, preserves the original physical-button sequence, and adds
+ESP32-S3 controller, reproduces the original physical-button sequence, and adds
 an installable local PWA for fan, thermostat, schedule, lighting, diagnostics,
 Wi-Fi provisioning, and OTA updates.
 
@@ -38,18 +40,19 @@ corrections, safety decisions, hardware integration, firmware, and validation.
 | [`firmware/`](firmware/) | Compilable ESP32-S3 sketch and LittleFS/PWA data |
 | [`docs/`](docs/) | Architecture, hardware, pinout, firmware, tests, and decisions |
 | [`assets/photos/`](assets/photos/) | Curated, resized, metadata-stripped project photos |
-| [`assets/screenshots/`](assets/screenshots/) | Captures from the installed `0.3.10` PWA |
+| [`assets/screenshots/`](assets/screenshots/) | Captures from the installable PWA |
 | [`assets/diagrams/`](assets/diagrams/) | Diagram source and exported reference material |
 
 Start with [Architecture](docs/architecture.md), [Hardware](docs/hardware.md),
-and [Firmware](docs/firmware.md). The complete photographic narrative is in
+[Module Connections](docs/module-connections.md), and [Firmware](docs/firmware.md).
+The complete photographic narrative is in
 [Gallery](docs/gallery.md). The role and limits of the AI-assisted workflow are
 recorded in [AI-Assisted Development](docs/ai-assisted-development.md). Spanish documentation starts at
 [`README.es.md`](README.es.md).
 
 ## Current Reference Build
 
-- Firmware: `0.3.10-led-state`
+- Firmware: `0.3.14-dual-core-fire`
 - Target: ESP32-S3, 4 MB flash, no PSRAM assumption
 - Filesystem: LittleFS
 - Web client: framework-free HTML/CSS/JavaScript PWA
@@ -61,7 +64,7 @@ first-run credentials; change them before deploying outside a trusted LAN.
 
 ## Project Status
 
-The retrofit is operational and remotely serviceable. Remaining portfolio work
+The Smart Mod is operational and remotely serviceable. Remaining portfolio work
 includes final calibrated LED color mapping, long-duration thermal logging,
 formal electrical measurements, and a future demonstration video.
 

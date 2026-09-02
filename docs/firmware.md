@@ -25,6 +25,12 @@ Every stopped-to-running transition applies 100% for two seconds, then moves to
 the requested phase delay. Adjusting an already-running fan does not repeat the
 boost.
 
+Zero-cross events wake a dedicated high-priority FreeRTOS task that owns the
+short GPIO47/MOC pulse. HTTP serving remains in the application loop, but cannot
+delay the phase-fire task. Status telemetry exposes `fireTaskReady`, pulse count,
+last pulse gap, and maximum pulse gap so this separation can be regression-tested
+while another device loads or logs into the PWA.
+
 ## Thermostat And Schedule
 
 Thermostat modes stop at or below the target and resume above it with configured

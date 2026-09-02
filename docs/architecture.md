@@ -21,16 +21,19 @@ flowchart LR
   ESP --> BUF[SN74AHCT125 level shifter]
   BUF --> LEDS[7 x addressable LEDs]
   ESP --> TEMP[DS18B20]
-  ESP --> BTN[Original push button]
+  ESP --> BTN[New push button on perfboard]
   ESP <--> PWA[Local PWA / OTA]
 ```
 
 ## Control Layers
 
-1. Interrupt handlers timestamp zero-cross and H11 edges.
+1. Interrupt handlers timestamp H11 edges and wake a dedicated TRIAC-fire task
+   at each zero crossing.
 2. The main loop derives mains presence, slider position, temperature, and time.
 3. A state machine resolves button, web, thermostat, timer, and schedule requests.
-4. The phase controller fires a short MOC pulse after a calibrated delay.
+4. The high-priority fire task runs on the other ESP32-S3 core and issues the
+   calibrated MOC pulse independently of HTTP/PWA and OneWire processing, so
+   loading or logging into the app cannot pause motor firing.
 5. LED rendering derives its normal state from the resolved fan mode.
 6. HTTP APIs expose state and accept explicit commands; page load is read-only.
 

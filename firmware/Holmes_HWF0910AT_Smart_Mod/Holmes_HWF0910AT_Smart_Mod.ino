@@ -11,9 +11,12 @@
 #include "esp_system.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "esp_rom_sys.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char* FW_NAME = "Holmes HWF0910AT Window Fan Smart Mod by Ivves";
-static const char* FW_VERSION = "0.3.10-led-state";
+static const char* FW_VERSION = "0.3.14-dual-core-fire";
 
 static const uint8_t PIN_ZERO_CROSS = 1;
 static const uint8_t PIN_H11_1 = 2;
@@ -272,9 +275,11 @@ static volatile uint32_t vZcLastIntervalUs = 0;
 static volatile uint32_t vZcPulseStartUs = 0;
 static volatile uint32_t vZcPulseWidthUs = 0;
 static volatile bool vZcLevel = false;
-static volatile bool vZcPending = false;
-static volatile uint32_t vZcPendingRiseUs = 0;
-static volatile uint32_t vZcPendingPulseWidthUs = 0;
+static TaskHandle_t gTriacFireTaskHandle = nullptr;
+static portMUX_TYPE gTriacFireMux = portMUX_INITIALIZER_UNLOCKED;
+static volatile bool vTriacFireEnabled = false;
+static volatile uint16_t vTriacFireDelayUs = DEFAULT_HIGH_DELAY_US;
+static volatile uint16_t vTriacPulseUs = DEFAULT_MOC_PULSE_US;
 
 static volatile uint32_t vH11Edges[4] = {0, 0, 0, 0};
 static volatile uint32_t vH11LastEdgeUs[4] = {0, 0, 0, 0};
@@ -299,12 +304,17 @@ static void recordTempHistory();
 static void appendTempHistoryJson(String& s);
 static uint32_t gH11LastAgeMs[4] = {0, 0, 0, 0};
 
-static bool gFirePending = false;
-static uint32_t gFireAtUs = 0;
-static bool gMocPulseActive = false;
-static uint32_t gMocOffAtUs = 0;
-static uint32_t gFirePulseCount = 0;
-static uint32_t gLastFireMs = 0;
+static volatile bool gTriacFireTaskReady = false;
+static volatile uint32_t gTriacNotifyCount = 0;
+static volatile uint32_t gTriacWakeCount = 0;
+static volatile uint32_t gTriacLastWakeMs = 0;
+static volatile uint8_t gTriacTaskStage = 0;
+static volatile bool gMocPulseActive = false;
+static volatile uint32_t gFirePulseCount = 0;
+static volatile uint32_t gLastFireMs = 0;
+static volatile uint32_t gLastFireUs = 0;
+static volatile uint32_t gFireLastGapUs = 0;
+static volatile uint32_t gFireMaxGapUs = 0;
 
 enum LedPreviewMode : uint8_t {
     LED_PREVIEW_NONE = 0,
@@ -824,9 +834,14 @@ static void renderLeds() {
 }
 
 static void forceMocOff() {
+    portENTER_CRITICAL(&gTriacFireMux);
+    vTriacFireEnabled = false;
     gpio_set_level((gpio_num_t)PIN_TRIAC_TRIGGER, 0);
     gMocPulseActive = false;
-    gFirePending = false;
+    gLastFireUs = 0;
+    gFireLastGapUs = 0;
+    gFireMaxGapUs = 0;
+    portEXIT_CRITICAL(&gTriacFireMux);
 }
 
 static uint8_t clampCustomSpeedPercent(int value) {
@@ -865,46 +880,80 @@ static uint16_t currentFireDelayUs() {
     return 0;
 }
 
-static void queueFireFromZeroCross(uint32_t riseUs, uint32_t pulseWidthUs) {
-    if (!fireAllowed()) return;
-    uint32_t centerOffsetUs = pulseWidthUs > 0 ? (pulseWidthUs / 2) : 800;
-    gFireAtUs = riseUs + centerOffsetUs + currentFireDelayUs();
-    gFirePending = true;
-}
-
-static void serviceFireOutput() {
-    if (!fireAllowed()) {
-        forceMocOff();
-        return;
-    }
-
-    uint32_t now = micros();
-    if (gFirePending && timeDueUs(now, gFireAtUs)) {
-        gpio_set_level((gpio_num_t)PIN_TRIAC_TRIGGER, 1);
-        gMocPulseActive = true;
-        gMocOffAtUs = now + cfgMocPulseUs;
-        gFirePending = false;
-        gFirePulseCount++;
-        gLastFireMs = millis();
-    }
-
-    if (gMocPulseActive && timeDueUs(now, gMocOffAtUs)) {
+static void syncTriacFireSnapshot() {
+    bool enabled = fireAllowed() && gTriacFireTaskReady;
+    uint16_t delayUs = enabled ? currentFireDelayUs() : cfgHighDelayUs;
+    portENTER_CRITICAL(&gTriacFireMux);
+    vTriacFireDelayUs = delayUs;
+    vTriacPulseUs = cfgMocPulseUs;
+    vTriacFireEnabled = enabled;
+    if (!enabled) {
         gpio_set_level((gpio_num_t)PIN_TRIAC_TRIGGER, 0);
         gMocPulseActive = false;
     }
+    portEXIT_CRITICAL(&gTriacFireMux);
 }
 
-static void serviceZcPendingFire() {
-    bool pending;
-    uint32_t riseUs;
-    uint32_t pulseWidthUs;
-    noInterrupts();
-    pending = vZcPending;
-    riseUs = vZcPendingRiseUs;
-    pulseWidthUs = vZcPendingPulseWidthUs;
-    if (pending) vZcPending = false;
-    interrupts();
-    if (pending) queueFireFromZeroCross(riseUs, pulseWidthUs);
+static void triacFireTask(void*) {
+    gTriacFireTaskReady = true;
+    for (;;) {
+        gTriacTaskStage = 1;
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        gTriacTaskStage = 2;
+        gTriacWakeCount++;
+        gTriacLastWakeMs = millis();
+
+        uint32_t riseUs = vZcLastRiseUs;
+        uint32_t pulseWidthUs = vZcPulseWidthUs;
+        uint16_t delayUs;
+        uint16_t pulseUs;
+        bool enabled;
+        portENTER_CRITICAL(&gTriacFireMux);
+        enabled = vTriacFireEnabled;
+        delayUs = vTriacFireDelayUs;
+        pulseUs = vTriacPulseUs;
+        portEXIT_CRITICAL(&gTriacFireMux);
+        if (!enabled) continue;
+
+        uint32_t centerOffsetUs = pulseWidthUs > 0 ? pulseWidthUs / 2 : 800;
+        uint32_t fireAtUs = riseUs + centerOffsetUs + delayUs;
+        gTriacTaskStage = 3;
+        for (;;) {
+            uint32_t nowUs = micros();
+            if (timeDueUs(nowUs, fireAtUs)) break;
+            uint32_t remainingUs = fireAtUs - nowUs;
+            if (remainingUs > 1500) {
+                vTaskDelay(pdMS_TO_TICKS((remainingUs - 500) / 1000));
+            } else if (remainingUs > 40) {
+                esp_rom_delay_us(20);
+            }
+        }
+
+        uint32_t firedUs = micros();
+        portENTER_CRITICAL(&gTriacFireMux);
+        if (!vTriacFireEnabled) {
+            portEXIT_CRITICAL(&gTriacFireMux);
+            continue;
+        }
+        gpio_set_level((gpio_num_t)PIN_TRIAC_TRIGGER, 1);
+        gTriacTaskStage = 4;
+        gMocPulseActive = true;
+        if (gLastFireUs != 0) {
+            gFireLastGapUs = firedUs - gLastFireUs;
+            if (gFireLastGapUs > gFireMaxGapUs) gFireMaxGapUs = gFireLastGapUs;
+        }
+        gLastFireUs = firedUs;
+        gFirePulseCount++;
+        gLastFireMs = millis();
+        portEXIT_CRITICAL(&gTriacFireMux);
+
+        esp_rom_delay_us(pulseUs);
+        portENTER_CRITICAL(&gTriacFireMux);
+        gpio_set_level((gpio_num_t)PIN_TRIAC_TRIGGER, 0);
+        gMocPulseActive = false;
+        gTriacTaskStage = 5;
+        portEXIT_CRITICAL(&gTriacFireMux);
+    }
 }
 
 static uint8_t owReadPin() {
@@ -1577,9 +1626,12 @@ static void IRAM_ATTR onZeroCrossChange() {
         vZcLastRiseUs = now;
         vZcRiseCount++;
         vZcPulseStartUs = now;
-        vZcPendingRiseUs = now;
-        vZcPendingPulseWidthUs = vZcPulseWidthUs;
-        vZcPending = true;
+        BaseType_t higherPriorityWoken = pdFALSE;
+        if (gTriacFireTaskHandle != nullptr) {
+            gTriacNotifyCount++;
+            vTaskNotifyGiveFromISR(gTriacFireTaskHandle, &higherPriorityWoken);
+            if (higherPriorityWoken == pdTRUE) portYIELD_FROM_ISR();
+        }
     } else {
         if (vZcPulseStartUs != 0) vZcPulseWidthUs = now - vZcPulseStartUs;
     }
@@ -1925,6 +1977,15 @@ static void webStatus() {
     s += "\"mocPulseActive\":" + jsonBool(gMocPulseActive) + ",";
     s += "\"firePulseCount\":" + String(gFirePulseCount) + ",";
     s += "\"lastFireMs\":" + String(gLastFireMs) + ",";
+    s += "\"fireTaskReady\":" + jsonBool(gTriacFireTaskReady) + ",";
+    s += "\"fireLastGapUs\":" + String(gFireLastGapUs) + ",";
+    s += "\"fireMaxGapUs\":" + String(gFireMaxGapUs) + ",";
+    s += "\"fireTaskEnabled\":" + jsonBool(vTriacFireEnabled) + ",";
+    s += "\"fireTaskNotifyCount\":" + String(gTriacNotifyCount) + ",";
+    s += "\"fireTaskWakeCount\":" + String(gTriacWakeCount) + ",";
+    s += "\"fireTaskLastWakeMs\":" + String(gTriacLastWakeMs) + ",";
+    s += "\"fireTaskStage\":" + String((int)gTriacTaskStage) + ",";
+    s += "\"fireTaskStackWords\":" + String(gTriacFireTaskHandle ? uxTaskGetStackHighWaterMark(gTriacFireTaskHandle) : 0) + ",";
     s += "\"fanControl\":{\"customEnabled\":" + jsonBool(cfgCustomSpeedEnabled) +
          ",\"customSpeedPercent\":" + String(cfgCustomSpeedPercent) +
          ",\"customDelayUs\":" + String(customDelayUsForPercent(cfgCustomSpeedPercent)) +
@@ -2746,6 +2807,15 @@ void setup() {
     clearLedPreview();
     renderLeds();
 
+    BaseType_t fireTaskCreated = xTaskCreatePinnedToCore(
+        triacFireTask, "triac-fire", 3072, nullptr, configMAX_PRIORITIES - 1,
+        &gTriacFireTaskHandle, 0);
+    if (fireTaskCreated != pdPASS) {
+        gTriacFireTaskHandle = nullptr;
+        gTriacFireTaskReady = false;
+        Serial0.println("[MOC] Failed to create TRIAC fire task; output remains disabled");
+    }
+
     attachInterrupt(digitalPinToInterrupt(PIN_ZERO_CROSS), onZeroCrossChange, CHANGE);
     attachInterrupt(digitalPinToInterrupt(PIN_H11_1), onH11_1, CHANGE);
     attachInterrupt(digitalPinToInterrupt(PIN_H11_2), onH11_2, CHANGE);
@@ -2770,8 +2840,7 @@ void loop() {
     serviceOffTimers();
     serviceWeeklySchedule();
     serviceMotorLogic();
-    serviceZcPendingFire();
-    serviceFireOutput();
+    syncTriacFireSnapshot();
 
     static uint32_t lastLedMs = 0;
     uint32_t now = millis();

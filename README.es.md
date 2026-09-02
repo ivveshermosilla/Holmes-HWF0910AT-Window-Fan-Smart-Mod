@@ -1,10 +1,12 @@
 # Holmes HWF0910AT Window Fan Smart Mod
 
-![Holmes HWF0910AT limpio y modificado](assets/photos/10-cleaned-front-view.jpg)
+| Frente después del servicio | Parte trasera después del servicio |
+| --- | --- |
+| ![Frente del Holmes HWF0910AT](assets/photos/09-front-after-service.jpg) | ![Parte trasera del Holmes HWF0910AT](assets/photos/10-rear-after-service.jpg) |
 
 Modificación independiente de un ventilador doble de ventana Holmes HWF0910AT
 que aún funcionaba. El proyecto reemplaza la electrónica de control original no
-aislada por un controlador ESP32-S3, conserva la secuencia del botón físico y
+aislada por un controlador ESP32-S3, reproduce la secuencia del botón físico y
 agrega una PWA local instalable para control, termostato, horarios, iluminación,
 diagnóstico, configuración Wi-Fi y actualizaciones OTA.
 
@@ -38,11 +40,12 @@ correcciones, las decisiones de seguridad, la integración y las pruebas.
 | [`firmware/`](firmware/) | Sketch compilable y archivos LittleFS/PWA |
 | [`docs/`](docs/) | Arquitectura, hardware, pines, firmware, pruebas y decisiones |
 | [`assets/photos/`](assets/photos/) | Fotos seleccionadas, reducidas y sin metadatos |
-| [`assets/screenshots/`](assets/screenshots/) | Capturas de la PWA instalada `0.3.10` |
+| [`assets/screenshots/`](assets/screenshots/) | Capturas de la PWA instalable |
 | [`assets/diagrams/`](assets/diagrams/) | Material de diagramas |
 
 La lectura técnica recomendada continúa en [Arquitectura](docs/architecture.md),
 [Hardware](docs/hardware.md), [Pinout](docs/pinout.md),
+[Conexiones por módulo](docs/module-connections.md),
 [Desarrollo asistido por IA](docs/ai-assisted-development.md) y
 [Galería](docs/gallery.md).
 

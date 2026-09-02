@@ -25,7 +25,7 @@ Tracing and measuring the existing control paths before assigning GPIO roles.
 The original seven-position indicator layout informed the final LOW/temperature/
 HIGH order and the digital representation in the PWA.
 
-## Retrofit
+## Smart Mod Integration
 
 ![Controller assembly](../assets/photos/06-controller-board-assembly.jpg)
 
@@ -39,15 +39,15 @@ Completed ESP32-S3 controller before final installation.
 
 Controller installed in the fan enclosure.
 
-## Cleaned Final Condition
+## Final Condition After Service
 
-![Cleaned rear](../assets/photos/09-cleaned-rear-view.jpg)
+![Front after service](../assets/photos/09-front-after-service.jpg)
 
-Rear view after cleaning and integration.
+Front view after service and integration.
 
-![Cleaned front](../assets/photos/10-cleaned-front-view.jpg)
+![Rear after service](../assets/photos/10-rear-after-service.jpg)
 
-Front view after service. The before/after comparison records the improvement
+Rear view after service. The before/after comparison records the improvement
 without presenting normal accumulated dust as the owner's living conditions.
 
 ## Application
