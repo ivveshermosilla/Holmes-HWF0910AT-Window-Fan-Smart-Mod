@@ -52,10 +52,12 @@ recorded in [AI-Assisted Development](docs/ai-assisted-development.md). Spanish 
 
 ## Current Reference Build
 
-- Firmware: `0.3.14-dual-core-fire`
+- Firmware: `0.3.15-scheduler-power-log`
 - Target: ESP32-S3, 4 MB flash, no PSRAM assumption
 - Filesystem: LittleFS
 - Web client: framework-free HTML/CSS/JavaScript PWA
+- Scheduled HIGH, LOW, and intermediate 85-100% speeds with a saved global LED dimmer
+- Persistent 24-hour controller log for reset, AC, command, and TRIAC timing causes
 - Control: zero-cross synchronized TRIAC firing through a MOC3023
 
 Network names, household credentials, MAC addresses, local paths, and photo GPS

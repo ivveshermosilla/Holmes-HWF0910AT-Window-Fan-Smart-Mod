@@ -11,6 +11,8 @@
 | Mobile individual color picker closed early | Re-render replaced the active input | Separate immediate preview from state refresh | Picker remains usable and changes render immediately |
 | A second browser caused a brief motor interruption | Login sent no motor command, but synchronous HTTP file serving delayed loop-driven MOC pulses | Keep startup read-only and move MOC timing to a dedicated high-priority task | Pulse-gap telemetry verifies continuity while another client loads the PWA |
 | Overnight schedules cross weekday boundaries | End time can be numerically earlier than start | Bind weekday to start; carry end into next day | Monday 10 PM to Tuesday 7 AM resolves as one interval |
+| Scheduled intermediate speed did not run when the manual slider checkbox was off | Schedule mode selected `CUSTOM`, but motor logic still required the unrelated manual enable flag | Give active schedule control independent authority over its persisted 85-100% value | Live 93% schedule reported motor requested, fire allowed and stable firing |
+| Intermittent stops needed evidence without creating new timing stalls | Browser activity was volatile and immediate NVM writes can stall flash-backed execution | Keep a 24-hour bounded controller log in RAM while firing and flush it after output stops | Reset, command and pulse events survive reboot; 12-session load produced no new gap event |
 | 5 GHz network could not be joined | ESP32-S3 scan/join behavior | Provision a 2.4 GHz SSID through AP mode | LAN operation and OTA established |
 | OTA must update code and UI independently | App and LittleFS use separate partitions | Provide two upload endpoints and progress/reboot flow | Both image types accepted and served after reboot |
 

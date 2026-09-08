@@ -41,6 +41,25 @@ belongs to the following day; equal times disable that interval.
 Schedules and their speed/dimmer values persist in ESP32 Preferences NVM.
 Temperature history stores one hourly sample for seven days in NVM.
 
+Scheduled intermediate speeds use `SPEED_CUSTOM` under schedule ownership. This
+authority is independent of the manual custom-slider checkbox: the checkbox
+continues to govern direct web control, while an active schedule can apply its
+own saved 85-100% value without changing that preference.
+
+## Persistent Power Tracking
+
+Firmware keeps a bounded ring of up to 64 events and exposes the newest entries
+under `powerLog` in `/api/status`. Once local time is synchronized, entries older
+than 24 hours are removed. Events include ESP reset reason, AC detection/loss,
+motor ON/OFF and its requesting subsystem, app session checks, MOC output
+blocking/restoration, and TRIAC firing gaps above 12,500 microseconds.
+
+Event capture is immediate in RAM. NVM persistence is deferred whenever the
+motor request or TRIAC fire task is active, preventing a diagnostic write from
+adding flash latency to phase firing. The next OFF transition commits the full
+pending log. This records software decisions and pulse timing; without a
+tachometer or isolated current sensor it cannot prove physical blade rotation.
+
 ## Build
 
 Reference Arduino-ESP32 target options:

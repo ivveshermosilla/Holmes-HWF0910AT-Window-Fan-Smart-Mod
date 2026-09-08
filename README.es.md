@@ -29,6 +29,8 @@ correcciones, las decisiones de seguridad, la integración y las pruebas.
 - Impulso de arranque de dos segundos a máxima potencia.
 - Siete indicadores direccionables sincronizados con la función real.
 - Temperatura DS18B20, historial horario de siete días, timer y horario semanal/diario.
+- Horarios HIGH, LOW o intermedios entre 85 y 100%, con dimmer global guardado.
+- Registro persistente de 24 horas para causas de reinicio, AC, comandos y pulsos TRIAC.
 - Configuración por AP, Wi-Fi 2.4 GHz, IP fija configurable y OTA separada para
   firmware y LittleFS.
 - PWA bilingüe y adaptable a móvil y escritorio.

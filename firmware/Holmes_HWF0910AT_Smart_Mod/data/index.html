@@ -1045,6 +1045,11 @@ input[type=color]{
       <div class="activity" id="activityList"></div>
     </article>
 
+    <article class="card glass activity-card span-2 view-hidden expandable" id="powerLogCard" tabindex="0" data-detail="powerLog" data-view="system">
+      <div class="eyebrow"><strong data-i18n="powerTracking">Registro de energia</strong><span data-i18n="last24Hours">ultimas 24 h</span></div>
+      <div class="activity" id="powerLogList"></div>
+    </article>
+
     <article class="card glass expandable system-card span-2 view-hidden" id="systemCard" tabindex="0" data-detail="system" data-view="system">
       <div class="eyebrow"><strong data-i18n="systemSafety">Seguridad del sistema</strong><span id="systemTag">--</span></div>
       <div class="module-list" id="moduleList"></div>
@@ -1137,7 +1142,7 @@ input[type=color]{
       connect:"Conectar",uploadFw:"Subir firmware",uploadFs:"Subir LittleFS",changeAdmin:"Cambiar admin",
       hostname:"Hostname",staticIp:"IP estatica",gateway:"Gateway",subnet:"Subnet",dns:"DNS",
       adminHint:"Protegido por admin:admin hasta que lo cambies.",scanNetworks:"Buscar redes",scanToSelect:"Busca para seleccionar una red",selectedNetwork:"Red seleccionada",connectDhcp:"Conectar por DHCP",setStaticIp:"Fijar IP estatica",scanning:"Buscando redes",noNetworks:"No se encontraron redes",connectingWifi:"Conectando",wifiConnected:"Conectado",wifiStaticSaved:"IP estatica guardada"
-      ,timeSchedule:"Hora y programacion",weeklySchedule:"Programacion",weekly:"Semanal",daily:"Diario",sameDay:"Mismo dia",overnight:"Nocturno",invalidSchedule:"Inicio y termino no pueden ser iguales",scheduleSpeed:"Velocidad programada",scheduleDimmer:"Dimmer programado",startTime:"Inicio",endTime:"Termino",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutos",remaining:"Restante",savePalette:"Guardar LED 1-7",logout:"Salir"
+      ,timeSchedule:"Hora y programacion",weeklySchedule:"Programacion",weekly:"Semanal",daily:"Diario",sameDay:"Mismo dia",overnight:"Nocturno",invalidSchedule:"Inicio y termino no pueden ser iguales",scheduleSpeed:"Velocidad programada",scheduleDimmer:"Dimmer programado",startTime:"Inicio",endTime:"Termino",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutos",remaining:"Restante",savePalette:"Guardar LED 1-7",logout:"Salir",powerTracking:"Registro de energia",last24Hours:"ultimas 24 h",noPowerEvents:"Sin eventos registrados"
     },
     en:{
       subtitle:"by Ivves",themeShort:"Night",themeDay:"Day",
@@ -1169,7 +1174,7 @@ input[type=color]{
       connect:"Connect",uploadFw:"Upload firmware",uploadFs:"Upload LittleFS",changeAdmin:"Change admin",
       hostname:"Hostname",staticIp:"Static IP",gateway:"Gateway",subnet:"Subnet",dns:"DNS",
       adminHint:"Protected by admin:admin until you change it.",scanNetworks:"Scan networks",scanToSelect:"Scan to select a network",selectedNetwork:"Selected network",connectDhcp:"Connect with DHCP",setStaticIp:"Set static IP",scanning:"Scanning networks",noNetworks:"No networks found",connectingWifi:"Connecting",wifiConnected:"Connected",wifiStaticSaved:"Static IP saved"
-      ,timeSchedule:"Time and Schedule",weeklySchedule:"Schedule",weekly:"Weekly",daily:"Daily",sameDay:"Same day",overnight:"Overnight",invalidSchedule:"Start and End cannot match",scheduleSpeed:"Scheduled speed",scheduleDimmer:"Scheduled dimmer",startTime:"Start",endTime:"End",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutes",remaining:"Remaining",savePalette:"Save LED 1-7",logout:"Logout"
+      ,timeSchedule:"Time and Schedule",weeklySchedule:"Schedule",weekly:"Weekly",daily:"Daily",sameDay:"Same day",overnight:"Overnight",invalidSchedule:"Start and End cannot match",scheduleSpeed:"Scheduled speed",scheduleDimmer:"Scheduled dimmer",startTime:"Start",endTime:"End",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutes",remaining:"Remaining",savePalette:"Save LED 1-7",logout:"Logout",powerTracking:"Power tracking",last24Hours:"last 24 h",noPowerEvents:"No events recorded"
     }
   };
   const $=sel=>document.querySelector(sel);
@@ -1641,6 +1646,67 @@ input[type=color]{
     const wrap=$("#activityList");
     wrap.innerHTML=state.activity.slice(0,5).map(item=>'<div class="activity-item"><span class="dot"></span><time>'+item.time+'</time><span>'+item.message+'</span></div>').join("");
   }
+  function powerCauseLabel(cause){
+    const es={
+      "power-on-reset":"reinicio por energia","software-reset":"reinicio de software","panic-reset":"reinicio por fallo",
+      "watchdog-reset":"reinicio por watchdog","brownout-reset":"reinicio por bajo voltaje","other-reset":"otro reinicio",
+      "boot-safety-off":"seguridad de arranque","ac-connected-safety-off":"seguridad al detectar AC","ac-signal-lost":"senal AC perdida",
+      "physical-button-short":"boton fisico corto","physical-button-long":"boton fisico largo","web-fan-command":"comando web",
+      "web-power-off":"apagado desde web","web-control-command":"control web","schedule-start":"inicio de schedule",
+      "schedule-end":"fin de schedule","schedule-edit":"edicion de schedule","duration-timer":"timer finalizado",
+      "clock-timer":"hora de apagado","temperature-target":"temperatura alcanzada","temperature-resume":"temperatura de reanudacion",
+      "temperature-sensor-fault":"fallo del sensor de temperatura","firmware-ota":"OTA de firmware","littlefs-ota":"OTA de LittleFS",
+      "admin-reboot":"reinicio administrativo","app-session-check":"conexion de app","triac-fire-gap":"interrupcion de pulsos TRIAC","internal":"logica interna"
+    };
+    const en={
+      "power-on-reset":"power-on reset","software-reset":"software reset","panic-reset":"panic reset",
+      "watchdog-reset":"watchdog reset","brownout-reset":"brownout reset","other-reset":"other reset",
+      "boot-safety-off":"boot safety","ac-connected-safety-off":"AC detection safety","ac-signal-lost":"AC signal lost",
+      "physical-button-short":"physical button short","physical-button-long":"physical button long","web-fan-command":"web command",
+      "web-power-off":"web power off","web-control-command":"web control","schedule-start":"schedule start",
+      "schedule-end":"schedule end","schedule-edit":"schedule edit","duration-timer":"duration timer","clock-timer":"clock timer",
+      "temperature-target":"temperature target","temperature-resume":"temperature resume","temperature-sensor-fault":"temperature sensor fault",
+      "firmware-ota":"firmware OTA","littlefs-ota":"LittleFS OTA","admin-reboot":"admin reboot","app-session-check":"app connection",
+      "triac-fire-gap":"TRIAC pulse interruption","internal":"internal logic"
+    };
+    const labels=state.lang==="es"?es:en;
+    return labels[cause]||String(cause||"--");
+  }
+  function powerEventLabel(event){
+    const names=state.lang==="es"?{
+      "boot":"Inicio ESP32","motor-on":"Motor ON","motor-off":"Motor OFF","ac-present":"AC detectado",
+      "ac-lost":"AC perdido","app-session":"Conexion de app","output-gap":"Pulso TRIAC demorado",
+      "output-blocked":"Salida bloqueada","output-restored":"Salida restaurada","system":"Accion del sistema"
+    }:{
+      "boot":"ESP32 boot","motor-on":"Motor ON","motor-off":"Motor OFF","ac-present":"AC detected",
+      "ac-lost":"AC lost","app-session":"App connection","output-gap":"Delayed TRIAC pulse",
+      "output-blocked":"Output blocked","output-restored":"Output restored","system":"System action"
+    };
+    let text=(names[event.event]||event.event||"Event")+" · "+powerCauseLabel(event.cause);
+    if((event.event==="motor-on"||event.event==="motor-off")&&event.mode) text+=" · "+event.mode+(event.speedPercent?" "+event.speedPercent+"%":"");
+    if(event.event==="output-gap"&&Number(event.detail)>0) text+=" · "+Number(event.detail)+" us";
+    return text;
+  }
+  function powerEventTime(event){
+    if(Number(event.epoch)>0){
+      const d=new Date(Number(event.epoch)*1000);
+      return d.toLocaleString(state.lang==="es"?"es-US":"en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit",second:"2-digit",hour12:true});
+    }
+    return "+"+Math.round(Number(event.uptimeMs||0)/1000)+"s";
+  }
+  function powerLogRows(limit){
+    const logData=(state.status&&state.status.powerLog)||{};
+    const events=Array.isArray(logData.events)?logData.events:[];
+    if(!events.length) return '<div class="meta-row"><span>'+tr("noPowerEvents")+'</span></div>';
+    return events.slice(0,limit||events.length).map(event=>{
+      const warning=event.event==="output-gap"||event.event==="output-blocked"||event.event==="ac-lost"||["panic-reset","watchdog-reset","brownout-reset"].includes(event.cause);
+      return '<div class="activity-item"><span class="dot '+(warning?"warn":"")+'"></span><time>'+powerEventTime(event)+'</time><span>'+powerEventLabel(event)+'</span></div>';
+    }).join("");
+  }
+  function renderPowerLog(){
+    const wrap=$("#powerLogList");
+    if(wrap) wrap.innerHTML=powerLogRows(7);
+  }
   function renderModules(){
     const s=state.status||{};
     const modules=s.h11Modules||[];
@@ -1801,6 +1867,7 @@ input[type=color]{
       syncGlobalPickerFromLeds();
     }
     renderModules();
+    renderPowerLog();
     renderWifiState(s.wifi||{});
     const otaTag=$("#otaReadyTag");
     if(otaTag&&s.ota) otaTag.textContent=s.ota.ready?"READY":"NOT READY";
@@ -2280,6 +2347,9 @@ input[type=color]{
     }
     if(type==="activity"){
       return '<div class="detail-panel"><h3>'+tr("recentActivity")+'</h3><div class="activity">'+state.activity.map(item=>'<div class="activity-item"><span class="dot"></span><time>'+item.time+'</time><span>'+item.message+'</span></div>').join("")+'</div></div>';
+    }
+    if(type==="powerLog"){
+      return '<div class="detail-panel"><h3>'+tr("powerTracking")+'</h3><div class="activity">'+powerLogRows()+'</div></div>';
     }
     return systemDetailHTML(s);
   }
@@ -2762,7 +2832,7 @@ input[type=color]{
   }
   function openDetail(type){
     state.detail=type;
-    $("#detailTitle").textContent=tr({temperature:"detailTemp",fans:"detailFans",speed:"detailSpeed",directions:"detailDirections",leds:"detailLeds",globalLed:"detailGlobalLed",time:"detailTime",activity:"detailActivity",system:"detailSystem"}[type]||"detailSystem");
+    $("#detailTitle").textContent=tr({temperature:"detailTemp",fans:"detailFans",speed:"detailSpeed",directions:"detailDirections",leds:"detailLeds",globalLed:"detailGlobalLed",time:"detailTime",activity:"detailActivity",powerLog:"powerTracking",system:"detailSystem"}[type]||"detailSystem");
     $("#detailBody").innerHTML=detailHTML(type);
     $("#detailOverlay").classList.add("open");
     $("#detailOverlay").setAttribute("aria-hidden","false");
@@ -2862,6 +2932,7 @@ input[type=color]{
   renderTranslations();
   renderClock();
   renderActivity();
+  renderPowerLog();
   applyConfig(state.config);
   showView("home");
   checkSession();

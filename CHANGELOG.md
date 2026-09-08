@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.15-scheduler-power-log - 2026-09-08
+
+- Fixed scheduled intermediate speeds: schedule-owned `CUSTOM` mode no longer
+  depends on the manual speed-slider checkbox.
+- Added a persistent 24-hour power/control event log with reset reasons, motor
+  transitions, schedule/timer/button/web causes, AC/ZC interruptions, and TRIAC
+  pulse-gap warnings.
+- Deferred event-log NVM writes while TRIAC output is active, so opening or
+  authenticating the PWA does not add flash latency to motor firing.
+- Added a bilingual Power tracking card and full log overlay in System.
+- Advanced the PWA shell cache to `hwf0910at-pwa-v5`.
+- Verified 93% scheduled operation and twelve simulated new-device PWA sessions
+  without a motor-state change or a new TRIAC timing warning.
+
 ## 0.3.14-dual-core-fire - 2026-09-01
 
 - Moved zero-cross synchronized MOC timing to a dedicated high-priority task so

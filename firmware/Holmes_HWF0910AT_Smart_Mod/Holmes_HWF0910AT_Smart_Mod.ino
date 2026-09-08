@@ -16,7 +16,7 @@
 #include "freertos/task.h"
 
 static const char* FW_NAME = "Holmes HWF0910AT Window Fan Smart Mod by Ivves";
-static const char* FW_VERSION = "0.3.14-dual-core-fire";
+static const char* FW_VERSION = "0.3.15-scheduler-power-log";
 
 static const uint8_t PIN_ZERO_CROSS = 1;
 static const uint8_t PIN_H11_1 = 2;
@@ -65,6 +65,11 @@ static const uint8_t TEMP_HISTORY_DAYS = 7;
 static const uint8_t TEMP_HISTORY_HOURS = 24;
 static const int16_t TEMP_HISTORY_EMPTY = INT16_MIN;
 static const uint16_t MINUTES_PER_DAY = 1440;
+static const uint32_t POWER_LOG_RETENTION_SECONDS = 24UL * 60UL * 60UL;
+static const uint8_t POWER_LOG_MAX_EVENTS = 64;
+static const uint32_t POWER_LOG_MAGIC = 0x48574650UL;
+static const uint8_t POWER_LOG_VERSION = 1;
+static const uint32_t FIRE_GAP_WARNING_US = 12500;
 
 enum ScheduleTempRule : uint8_t {
     SCHEDULE_TEMP_NONE = 0,
@@ -101,6 +106,69 @@ enum FanSpeed : uint8_t {
     SPEED_HIGH = 1,
     SPEED_LOW = 2,
     SPEED_CUSTOM = 3
+};
+
+enum PowerEventType : uint8_t {
+    POWER_EVENT_BOOT = 0,
+    POWER_EVENT_MOTOR_ON,
+    POWER_EVENT_MOTOR_OFF,
+    POWER_EVENT_AC_PRESENT,
+    POWER_EVENT_AC_LOST,
+    POWER_EVENT_APP_SESSION,
+    POWER_EVENT_OUTPUT_GAP,
+    POWER_EVENT_OUTPUT_BLOCKED,
+    POWER_EVENT_OUTPUT_RESTORED,
+    POWER_EVENT_SYSTEM
+};
+
+enum PowerEventCause : uint8_t {
+    POWER_CAUSE_INTERNAL = 0,
+    POWER_CAUSE_RESET_POWER_ON,
+    POWER_CAUSE_RESET_SOFTWARE,
+    POWER_CAUSE_RESET_PANIC,
+    POWER_CAUSE_RESET_WATCHDOG,
+    POWER_CAUSE_RESET_BROWNOUT,
+    POWER_CAUSE_RESET_OTHER,
+    POWER_CAUSE_BOOT_SAFETY,
+    POWER_CAUSE_AC_CONNECTED_SAFETY,
+    POWER_CAUSE_AC_SIGNAL_LOST,
+    POWER_CAUSE_BUTTON_SHORT,
+    POWER_CAUSE_BUTTON_LONG,
+    POWER_CAUSE_WEB_FAN,
+    POWER_CAUSE_WEB_POWER_OFF,
+    POWER_CAUSE_WEB_CONTROL,
+    POWER_CAUSE_SCHEDULE_START,
+    POWER_CAUSE_SCHEDULE_END,
+    POWER_CAUSE_SCHEDULE_EDIT,
+    POWER_CAUSE_DURATION_TIMER,
+    POWER_CAUSE_CLOCK_TIMER,
+    POWER_CAUSE_TEMP_TARGET,
+    POWER_CAUSE_TEMP_RESUME,
+    POWER_CAUSE_TEMP_SENSOR_FAULT,
+    POWER_CAUSE_OTA_FIRMWARE,
+    POWER_CAUSE_OTA_LITTLEFS,
+    POWER_CAUSE_ADMIN_REBOOT,
+    POWER_CAUSE_APP_SESSION,
+    POWER_CAUSE_FIRE_GAP
+};
+
+struct PowerEventRecord {
+    uint32_t epoch;
+    uint32_t uptimeMs;
+    uint32_t bootId;
+    uint32_t detail;
+    uint8_t type;
+    uint8_t cause;
+    uint8_t mode;
+    uint8_t speedPercent;
+};
+
+struct PowerLogStore {
+    uint32_t magic;
+    uint8_t version;
+    uint8_t count;
+    uint16_t reserved;
+    PowerEventRecord events[POWER_LOG_MAX_EVENTS];
 };
 
 enum H11Role : uint8_t {
@@ -338,6 +406,12 @@ static size_t gUpdateBytes = 0;
 static size_t gUpdateTotal = 0;
 static uint32_t gUpdateStartedMs = 0;
 static uint32_t gRebootAtMs = 0;
+static PowerLogStore gPowerLog;
+static uint32_t gBootId = 0;
+static PowerEventCause gPendingMotorCause = POWER_CAUSE_INTERNAL;
+static bool gFireGapLogged = false;
+static bool gPowerLogDirty = false;
+static bool gZcOutputBlockedLogged = false;
 
 static inline bool timeDueUs(uint32_t now, uint32_t due) {
     return (int32_t)(now - due) >= 0;
@@ -471,6 +545,192 @@ static const char* speedName(FanSpeed speed) {
     if (speed == SPEED_LOW) return "LOW";
     if (speed == SPEED_CUSTOM) return "CUSTOM";
     return "OFF";
+}
+
+static const char* powerEventTypeName(uint8_t type) {
+    switch ((PowerEventType)type) {
+        case POWER_EVENT_BOOT: return "boot";
+        case POWER_EVENT_MOTOR_ON: return "motor-on";
+        case POWER_EVENT_MOTOR_OFF: return "motor-off";
+        case POWER_EVENT_AC_PRESENT: return "ac-present";
+        case POWER_EVENT_AC_LOST: return "ac-lost";
+        case POWER_EVENT_APP_SESSION: return "app-session";
+        case POWER_EVENT_OUTPUT_GAP: return "output-gap";
+        case POWER_EVENT_OUTPUT_BLOCKED: return "output-blocked";
+        case POWER_EVENT_OUTPUT_RESTORED: return "output-restored";
+        case POWER_EVENT_SYSTEM: return "system";
+        default: return "unknown";
+    }
+}
+
+static const char* powerCauseName(uint8_t cause) {
+    switch ((PowerEventCause)cause) {
+        case POWER_CAUSE_RESET_POWER_ON: return "power-on-reset";
+        case POWER_CAUSE_RESET_SOFTWARE: return "software-reset";
+        case POWER_CAUSE_RESET_PANIC: return "panic-reset";
+        case POWER_CAUSE_RESET_WATCHDOG: return "watchdog-reset";
+        case POWER_CAUSE_RESET_BROWNOUT: return "brownout-reset";
+        case POWER_CAUSE_RESET_OTHER: return "other-reset";
+        case POWER_CAUSE_BOOT_SAFETY: return "boot-safety-off";
+        case POWER_CAUSE_AC_CONNECTED_SAFETY: return "ac-connected-safety-off";
+        case POWER_CAUSE_AC_SIGNAL_LOST: return "ac-signal-lost";
+        case POWER_CAUSE_BUTTON_SHORT: return "physical-button-short";
+        case POWER_CAUSE_BUTTON_LONG: return "physical-button-long";
+        case POWER_CAUSE_WEB_FAN: return "web-fan-command";
+        case POWER_CAUSE_WEB_POWER_OFF: return "web-power-off";
+        case POWER_CAUSE_WEB_CONTROL: return "web-control-command";
+        case POWER_CAUSE_SCHEDULE_START: return "schedule-start";
+        case POWER_CAUSE_SCHEDULE_END: return "schedule-end";
+        case POWER_CAUSE_SCHEDULE_EDIT: return "schedule-edit";
+        case POWER_CAUSE_DURATION_TIMER: return "duration-timer";
+        case POWER_CAUSE_CLOCK_TIMER: return "clock-timer";
+        case POWER_CAUSE_TEMP_TARGET: return "temperature-target";
+        case POWER_CAUSE_TEMP_RESUME: return "temperature-resume";
+        case POWER_CAUSE_TEMP_SENSOR_FAULT: return "temperature-sensor-fault";
+        case POWER_CAUSE_OTA_FIRMWARE: return "firmware-ota";
+        case POWER_CAUSE_OTA_LITTLEFS: return "littlefs-ota";
+        case POWER_CAUSE_ADMIN_REBOOT: return "admin-reboot";
+        case POWER_CAUSE_APP_SESSION: return "app-session-check";
+        case POWER_CAUSE_FIRE_GAP: return "triac-fire-gap";
+        default: return "internal";
+    }
+}
+
+static PowerEventCause resetCause() {
+    switch (esp_reset_reason()) {
+        case ESP_RST_POWERON: return POWER_CAUSE_RESET_POWER_ON;
+        case ESP_RST_SW: return POWER_CAUSE_RESET_SOFTWARE;
+        case ESP_RST_PANIC: return POWER_CAUSE_RESET_PANIC;
+        case ESP_RST_INT_WDT:
+        case ESP_RST_TASK_WDT:
+        case ESP_RST_WDT: return POWER_CAUSE_RESET_WATCHDOG;
+        case ESP_RST_BROWNOUT: return POWER_CAUSE_RESET_BROWNOUT;
+        default: return POWER_CAUSE_RESET_OTHER;
+    }
+}
+
+static uint8_t speedPercentForMode(FanMode mode) {
+    FanSpeed speed = modeInfo(mode).speed;
+    if (speed == SPEED_CUSTOM) return cfgCustomSpeedPercent;
+    if (speed == SPEED_HIGH) return FAN_HIGH_REFERENCE_PERCENT;
+    if (speed == SPEED_LOW) return FAN_LOW_REFERENCE_PERCENT;
+    return 0;
+}
+
+static void savePowerLog() {
+    gPowerLogDirty = true;
+    if (gMotorShouldRun || vTriacFireEnabled) return;
+    prefs.putBytes("power_log", &gPowerLog, sizeof(gPowerLog));
+    gPowerLogDirty = false;
+}
+
+static void servicePowerLogPersistence() {
+    if (gPowerLogDirty && !gMotorShouldRun && !vTriacFireEnabled) savePowerLog();
+}
+
+static bool prunePowerLog(uint32_t nowEpoch) {
+    if (!nowEpoch) return false;
+    uint8_t writeIndex = 0;
+    for (uint8_t i = 0; i < gPowerLog.count; i++) {
+        const PowerEventRecord& event = gPowerLog.events[i];
+        bool currentUnsynced = event.epoch == 0 && event.bootId == gBootId;
+        bool recent = event.epoch != 0 &&
+                      (event.epoch >= nowEpoch || nowEpoch - event.epoch <= POWER_LOG_RETENTION_SECONDS);
+        if (currentUnsynced || recent) {
+            if (writeIndex != i) gPowerLog.events[writeIndex] = event;
+            writeIndex++;
+        }
+    }
+    bool changed = writeIndex != gPowerLog.count;
+    gPowerLog.count = writeIndex;
+    return changed;
+}
+
+static void loadPowerLog() {
+    memset(&gPowerLog, 0, sizeof(gPowerLog));
+    if (prefs.getBytesLength("power_log") == sizeof(gPowerLog)) {
+        prefs.getBytes("power_log", &gPowerLog, sizeof(gPowerLog));
+    }
+    if (gPowerLog.magic != POWER_LOG_MAGIC || gPowerLog.version != POWER_LOG_VERSION ||
+        gPowerLog.count > POWER_LOG_MAX_EVENTS) {
+        memset(&gPowerLog, 0, sizeof(gPowerLog));
+        gPowerLog.magic = POWER_LOG_MAGIC;
+        gPowerLog.version = POWER_LOG_VERSION;
+    }
+    gBootId = prefs.getUInt("power_boot", 0) + 1;
+    prefs.putUInt("power_boot", gBootId);
+}
+
+static void recordPowerEvent(PowerEventType type, PowerEventCause cause, uint32_t detail = 0,
+                             FanMode mode = MODE_OFF_LOOP, int speedPercent = -1) {
+    uint32_t nowMs = millis();
+    uint32_t nowEpoch = localEpochNow();
+    prunePowerLog(nowEpoch);
+
+    if (gPowerLog.count) {
+        const PowerEventRecord& last = gPowerLog.events[gPowerLog.count - 1];
+        uint32_t duplicateWindowMs = type == POWER_EVENT_APP_SESSION ? 60000UL : 1500UL;
+        if (last.bootId == gBootId && last.type == type && last.cause == cause &&
+            nowMs - last.uptimeMs < duplicateWindowMs) {
+            return;
+        }
+    }
+    if (gPowerLog.count >= POWER_LOG_MAX_EVENTS) {
+        memmove(&gPowerLog.events[0], &gPowerLog.events[1],
+                sizeof(gPowerLog.events[0]) * (POWER_LOG_MAX_EVENTS - 1));
+        gPowerLog.count = POWER_LOG_MAX_EVENTS - 1;
+    }
+
+    PowerEventRecord& event = gPowerLog.events[gPowerLog.count++];
+    event.epoch = nowEpoch;
+    event.uptimeMs = nowMs;
+    event.bootId = gBootId;
+    event.detail = detail;
+    event.type = (uint8_t)type;
+    event.cause = (uint8_t)cause;
+    event.mode = (uint8_t)mode;
+    event.speedPercent = speedPercent >= 0 ? constrain(speedPercent, 0, 100) : speedPercentForMode(mode);
+    savePowerLog();
+}
+
+static void stampCurrentBootPowerEvents() {
+    uint32_t nowEpoch = localEpochNow();
+    if (!nowEpoch) return;
+    uint32_t nowMs = millis();
+    bool changed = false;
+    for (uint8_t i = 0; i < gPowerLog.count; i++) {
+        PowerEventRecord& event = gPowerLog.events[i];
+        if (event.bootId != gBootId || event.epoch != 0) continue;
+        uint32_t ageSeconds = (nowMs - event.uptimeMs) / 1000UL;
+        event.epoch = nowEpoch > ageSeconds ? nowEpoch - ageSeconds : nowEpoch;
+        changed = true;
+    }
+    if (prunePowerLog(nowEpoch)) changed = true;
+    if (changed) savePowerLog();
+}
+
+static void appendPowerLogJson(String& s) {
+    uint32_t nowEpoch = localEpochNow();
+    if (prunePowerLog(nowEpoch)) savePowerLog();
+    s += "{\"retentionHours\":24,\"capacity\":" + String(POWER_LOG_MAX_EVENTS) +
+         ",\"bootId\":" + String(gBootId) + ",\"events\":[";
+    bool first = true;
+    for (int i = (int)gPowerLog.count - 1; i >= 0; i--) {
+        const PowerEventRecord& event = gPowerLog.events[i];
+        if (!first) s += ",";
+        first = false;
+        FanMode mode = event.mode < (sizeof(MODE_INFO) / sizeof(MODE_INFO[0])) ?
+                       (FanMode)event.mode : MODE_OFF_LOOP;
+        s += "{\"epoch\":" + String(event.epoch) +
+             ",\"uptimeMs\":" + String(event.uptimeMs) +
+             ",\"bootId\":" + String(event.bootId) +
+             ",\"event\":\"" + powerEventTypeName(event.type) +
+             "\",\"cause\":\"" + powerCauseName(event.cause) +
+             "\",\"mode\":\"" + String(modeInfo(mode).label) +
+             "\",\"speedPercent\":" + String(event.speedPercent) +
+             ",\"detail\":" + String(event.detail) + "}";
+    }
+    s += "]}";
 }
 
 static bool modeIsActive(FanMode mode) {
@@ -894,6 +1154,19 @@ static void syncTriacFireSnapshot() {
     portEXIT_CRITICAL(&gTriacFireMux);
 }
 
+static void servicePowerDiagnostics() {
+    if (!fireAllowed() || !gTriacFireTaskReady) {
+        gFireGapLogged = false;
+        return;
+    }
+    uint32_t maxGapUs = gFireMaxGapUs;
+    if (!gFireGapLogged && maxGapUs >= FIRE_GAP_WARNING_US) {
+        gFireGapLogged = true;
+        recordPowerEvent(POWER_EVENT_OUTPUT_GAP, POWER_CAUSE_FIRE_GAP, maxGapUs,
+                         gMode, speedPercentForMode(gMode));
+    }
+}
+
 static void triacFireTask(void*) {
     gTriacFireTaskReady = true;
     for (;;) {
@@ -1108,15 +1381,16 @@ static void serviceTemperature() {
     }
 }
 
-static void setMode(FanMode mode) {
+static void setMode(FanMode mode, PowerEventCause cause = POWER_CAUSE_INTERNAL) {
     if ((uint8_t)mode >= (sizeof(MODE_INFO) / sizeof(MODE_INFO[0]))) mode = MODE_OFF_LOOP;
     gMode = mode;
+    gPendingMotorCause = cause;
     if (!modeInfo(mode).thermostat) gThermostatCalling = false;
     if (!modeIsActive(mode)) forceMocOff();
 }
 
-static void setModeFromWeb(FanMode mode) {
-    setMode(mode);
+static void setModeFromWeb(FanMode mode, PowerEventCause cause = POWER_CAUSE_WEB_FAN) {
+    setMode(mode, cause);
     if (modeIsActive(gMode)) {
         gMocArmed = true;
     } else {
@@ -1125,8 +1399,8 @@ static void setModeFromWeb(FanMode mode) {
     }
 }
 
-static void setModeFromButton(FanMode mode) {
-    setMode(mode);
+static void setModeFromButton(FanMode mode, PowerEventCause cause) {
+    setMode(mode, cause);
     if (modeIsActive(gMode)) {
         if (cfgButtonEnabled) {
             gMocArmed = true;
@@ -1153,7 +1427,11 @@ static void cancelScheduleDrive() {
     gScheduleDriving = false;
 }
 
-static void fullPowerOff() {
+static void fullPowerOff(PowerEventCause cause = POWER_CAUSE_INTERNAL, int previousPercentOverride = -1) {
+    FanMode previousMode = gMode;
+    uint8_t previousPercent = previousPercentOverride >= 0 ?
+                              constrain(previousPercentOverride, 0, 100) : speedPercentForMode(previousMode);
+    bool wasActive = gMotorShouldRun || modeIsActive(previousMode);
     cancelScheduleDrive();
     gMode = MODE_OFF_LOOP;
     gThermostatCalling = false;
@@ -1165,6 +1443,10 @@ static void fullPowerOff() {
     gDurationTimerActive = false;
     gClockTimerActive = false;
     forceMocOff();
+    gPendingMotorCause = POWER_CAUSE_INTERNAL;
+    if (wasActive) {
+        recordPowerEvent(POWER_EVENT_MOTOR_OFF, cause, 0, previousMode, previousPercent);
+    }
 }
 
 static FanMode modeFromOriginalChoice(uint8_t speed, int setpointF) {
@@ -1201,23 +1483,23 @@ static void buttonCycleOriginal() {
     cancelScheduleDrive();
     if (gMode == MODE_OFF_MEMORY && gMemoryValid) {
         cfgLightsOn = true;
-        setModeFromButton(gMemoryMode);
+        setModeFromButton(gMemoryMode, POWER_CAUSE_BUTTON_SHORT);
         return;
     }
 
     if (gMode == MODE_OFF_MEMORY) {
         cfgLightsOn = true;
-        setModeFromButton(MODE_HIGH_CONT);
+        setModeFromButton(MODE_HIGH_CONT, POWER_CAUSE_BUTTON_SHORT);
         return;
     }
 
     if (gMode == MODE_CUSTOM) {
-        setModeFromButton(MODE_OFF_LOOP);
+        setModeFromButton(MODE_OFF_LOOP, POWER_CAUSE_BUTTON_SHORT);
         return;
     }
 
     FanMode base = gMode;
-    setModeFromButton(nextOriginalLoopMode(base));
+    setModeFromButton(nextOriginalLoopMode(base), POWER_CAUSE_BUTTON_SHORT);
 }
 
 static void buttonLongOriginal() {
@@ -1227,9 +1509,9 @@ static void buttonLongOriginal() {
         gMemoryValid = true;
         cfgLightsOn = false;
         clearLedPreview();
-        setModeFromButton(MODE_OFF_MEMORY);
+        setModeFromButton(MODE_OFF_MEMORY, POWER_CAUSE_BUTTON_LONG);
     } else {
-        setModeFromButton(MODE_OFF_LOOP);
+        setModeFromButton(MODE_OFF_LOOP, POWER_CAUSE_BUTTON_LONG);
     }
 }
 
@@ -1332,7 +1614,7 @@ static void serviceWeeklySchedule() {
         cfgLedDimmerPercent = cfgScheduleLedDimmerPercent;
         FanMode scheduledMode = cfgScheduleSpeed == SPEED_CUSTOM ? MODE_CUSTOM :
                                 modeFromOriginalChoice(cfgScheduleSpeed, 0);
-        setModeFromWeb(scheduledMode);
+        setModeFromWeb(scheduledMode, POWER_CAUSE_SCHEDULE_START);
         gScheduleDriving = true;
         renderLeds();
     } else if (activeNow && gScheduleDriving) {
@@ -1343,7 +1625,7 @@ static void serviceWeeklySchedule() {
             renderLeds();
         }
     } else if (!activeNow && gScheduleWindowWasActive && gScheduleDriving) {
-        fullPowerOff();
+        fullPowerOff(POWER_CAUSE_SCHEDULE_END);
     }
     gScheduleWindowWasActive = activeNow;
 }
@@ -1475,15 +1757,16 @@ static void appendTempHistoryJson(String& s) {
 static void serviceOffTimers() {
     uint32_t now = millis();
     if (gDurationTimerActive && timeDueUs(now, gDurationOffAtMs)) {
-        fullPowerOff();
+        fullPowerOff(POWER_CAUSE_DURATION_TIMER);
     }
     if (gClockTimerActive && gTimeSynced && localEpochNow() >= gClockOffAtEpoch) {
-        fullPowerOff();
+        fullPowerOff(POWER_CAUSE_CLOCK_TIMER);
     }
 }
 
 static void serviceMotorLogic() {
     const ModeInfo& info = modeInfo(gMode);
+    bool wasRunning = gMotorShouldRun;
     gTempSafetyFault = false;
     bool shouldRun = false;
     FanSpeed nextSpeed = SPEED_OFF;
@@ -1492,7 +1775,7 @@ static void serviceMotorLogic() {
         gThermostatCalling = false;
     } else if (gMode == MODE_CUSTOM) {
         gThermostatCalling = false;
-        shouldRun = cfgCustomSpeedEnabled;
+        shouldRun = cfgCustomSpeedEnabled || gScheduleDriving;
         nextSpeed = shouldRun ? SPEED_CUSTOM : SPEED_OFF;
     } else if (!info.thermostat) {
         gThermostatCalling = false;
@@ -1523,6 +1806,21 @@ static void serviceMotorLogic() {
     gMotorWasRunning = shouldRun;
     gMotorShouldRun = shouldRun;
     gCurrentSpeed = nextSpeed;
+    if (wasRunning != shouldRun) {
+        PowerEventCause cause = gPendingMotorCause;
+        if (cause == POWER_CAUSE_INTERNAL) {
+            if (info.thermostat) {
+                cause = shouldRun ? POWER_CAUSE_TEMP_RESUME :
+                        (gTempSafetyFault ? POWER_CAUSE_TEMP_SENSOR_FAULT : POWER_CAUSE_TEMP_TARGET);
+            } else {
+                cause = POWER_CAUSE_INTERNAL;
+            }
+        }
+        recordPowerEvent(shouldRun ? POWER_EVENT_MOTOR_ON : POWER_EVENT_MOTOR_OFF,
+                         cause, 0, gMode,
+                         shouldRun && nextSpeed == SPEED_CUSTOM ? cfgCustomSpeedPercent : speedPercentForMode(gMode));
+    }
+    gPendingMotorCause = POWER_CAUSE_INTERNAL;
     if (!gMotorShouldRun) forceMocOff();
 }
 
@@ -1593,22 +1891,36 @@ static void servicePulseMetrics() {
         gZcIntervalUs = intervalUs;
         gZcLastRiseSnapshotUs = lastRiseUs;
         bool fresh = lastRiseUs != 0 && (nowUs - lastRiseUs) < ZC_FRESH_US;
+        bool wasStable = gZcStable;
         bool stableNow = fresh && gZcHz >= 90.0f && gZcHz <= 150.0f;
         if (stableNow) {
+            if (gZcOutputBlockedLogged && gMotorShouldRun && gMocArmed) {
+                recordPowerEvent(POWER_EVENT_OUTPUT_RESTORED, POWER_CAUSE_AC_SIGNAL_LOST,
+                                 (uint32_t)gZcHz, gMode, speedPercentForMode(gMode));
+            }
+            gZcOutputBlockedLogged = false;
             if (!gAcPresent) {
                 gAcConnectOffCount++;
-                fullPowerOff();
+                recordPowerEvent(POWER_EVENT_AC_PRESENT, POWER_CAUSE_AC_CONNECTED_SAFETY);
+                fullPowerOff(POWER_CAUSE_AC_CONNECTED_SAFETY);
             }
             gAcPresent = true;
             gLastAcStableMs = nowMs;
         } else {
             if (gAcPresent && nowMs - gLastAcStableMs > AC_LOST_MS) {
                 gAcPresent = false;
+                recordPowerEvent(POWER_EVENT_AC_LOST, POWER_CAUSE_AC_SIGNAL_LOST, 0, gMode,
+                                 speedPercentForMode(gMode));
                 cfgLightsOn = true;
                 enableAllLedSession();
                 clearLedPreview();
             }
             forceMocOff();
+        }
+        if (wasStable && !stableNow && gMotorShouldRun && gMocArmed) {
+            gZcOutputBlockedLogged = true;
+            recordPowerEvent(POWER_EVENT_OUTPUT_BLOCKED, POWER_CAUSE_AC_SIGNAL_LOST,
+                             (uint32_t)gZcHz, gMode, speedPercentForMode(gMode));
         }
         gZcStable = stableNow;
         gPrevZcSampleMs = nowMs;
@@ -1774,6 +2086,8 @@ static void webPostLogin() {
 }
 
 static void webSession() {
+    recordPowerEvent(POWER_EVENT_APP_SESSION, POWER_CAUSE_APP_SESSION, 0, gMode,
+                     speedPercentForMode(gMode));
     String s = "{\"ok\":true,\"loggedIn\":" + jsonBool(requestHasWebSession() || cfgWebUser.length() == 0 || cfgWebPass.length() == 0) +
                ",\"user\":\"" + jsonEscape(cfgWebUser) + "\"}";
     webServer.send(200, "application/json", s);
@@ -1956,7 +2270,7 @@ static void webStatus() {
     decodedSliders(saA, saB, sbA, sbB);
     const ModeInfo& info = modeInfo(gMode);
     String s;
-    s.reserve(6200);
+    s.reserve(14000);
     s += "{";
     s += "\"name\":\"" + String(FW_NAME) + "\",";
     s += "\"version\":\"" + String(FW_VERSION) + "\",";
@@ -2062,6 +2376,9 @@ static void webStatus() {
     s += "\"ac\":{\"present\":" + jsonBool(gAcPresent) +
          ",\"connectOffCount\":" + String(gAcConnectOffCount) +
          ",\"lastStableMs\":" + String(gLastAcStableMs) + "},";
+    s += "\"powerLog\":";
+    appendPowerLogJson(s);
+    s += ",";
     s += "\"wifi\":";
     appendWifiJson(s);
     s += ",\"ota\":";
@@ -2152,7 +2469,7 @@ static void webPostControl() {
     int mode = jsonInt(body, "mode", -1);
     if (mode >= 0 && mode <= (int)MODE_OFF_MEMORY) {
         cancelScheduleDrive();
-        setMode((FanMode)mode);
+        setMode((FanMode)mode, POWER_CAUSE_WEB_CONTROL);
     }
 	    int lights = jsonInt(body, "lightsOn", -1);
 	    if (lights >= 0) cfgLightsOn = lights != 0;
@@ -2166,14 +2483,22 @@ static void webPostControl() {
         if (!cfgButtonEnabled) gButtonWasPressed = false;
     }
     int customEnabled = jsonInt(body, "customSpeedEnabled", -1);
-    if (customEnabled >= 0) cfgCustomSpeedEnabled = customEnabled != 0;
+    if (customEnabled >= 0) {
+        cfgCustomSpeedEnabled = customEnabled != 0;
+        gPendingMotorCause = POWER_CAUSE_WEB_CONTROL;
+    }
     if (jsonHas(body, "speedPercent")) {
         cfgCustomSpeedPercent = clampCustomSpeedPercent(jsonInt(body, "speedPercent", cfgCustomSpeedPercent));
     }
     int armed = jsonInt(body, "mocArmed", -1);
     if (armed >= 0) {
+        bool wasArmed = gMocArmed;
         gMocArmed = armed != 0;
         if (!gMocArmed) forceMocOff();
+        if (wasArmed != gMocArmed && gMotorShouldRun) {
+            recordPowerEvent(gMocArmed ? POWER_EVENT_OUTPUT_RESTORED : POWER_EVENT_OUTPUT_BLOCKED,
+                             POWER_CAUSE_WEB_CONTROL, 0, gMode, speedPercentForMode(gMode));
+        }
     }
     if (jsonInt(body, "save", 0)) saveConfig();
     webOk("control");
@@ -2184,7 +2509,7 @@ static void webPostFan() {
     cancelScheduleDrive();
     String body = webServer.arg("plain");
     if (jsonInt(body, "off", 0)) {
-        fullPowerOff();
+        fullPowerOff(POWER_CAUSE_WEB_POWER_OFF);
         webOk("fan-off");
         return;
     }
@@ -2195,12 +2520,12 @@ static void webPostFan() {
     cfgCustomSpeedPercent = clampCustomSpeedPercent(jsonInt(body, "speedPercent", cfgCustomSpeedPercent));
 
     if (cfgCustomSpeedEnabled) {
-        setModeFromWeb(MODE_CUSTOM);
+        setModeFromWeb(MODE_CUSTOM, POWER_CAUSE_WEB_FAN);
     } else {
         uint8_t selectedSpeed = (uint8_t)jsonInt(body, "originalSpeed", SPEED_HIGH);
         int setpointF = jsonInt(body, "setpointF", 0);
         FanMode mode = modeFromOriginalChoice(selectedSpeed, setpointF);
-        setModeFromWeb(mode);
+        setModeFromWeb(mode, POWER_CAUSE_WEB_FAN);
     }
 
     if (jsonInt(body, "save", 1)) saveConfig();
@@ -2338,7 +2663,7 @@ static void webPostButtonCycle() {
 
 static void webPostPowerOff() {
     if (!webAuthorized()) return;
-    fullPowerOff();
+    fullPowerOff(POWER_CAUSE_WEB_POWER_OFF);
     webOk("power-off");
 }
 
@@ -2356,7 +2681,7 @@ static void webPostTimer() {
         uint8_t speed = (uint8_t)jsonInt(body, "speed", SPEED_HIGH);
         if (speed != SPEED_HIGH && speed != SPEED_LOW) speed = SPEED_HIGH;
         cancelScheduleDrive();
-        setModeFromWeb(modeFromOriginalChoice(speed, 0));
+        setModeFromWeb(modeFromOriginalChoice(speed, 0), POWER_CAUSE_WEB_FAN);
         gDurationTimerActive = true;
         gDurationOffAtMs = millis() + (uint32_t)minutes * 60UL * 1000UL;
     }
@@ -2372,6 +2697,7 @@ static void webPostSchedule() {
     if (!webAuthorized()) return;
     String body = webServer.arg("plain");
     bool scheduleWasDriving = gScheduleDriving;
+    uint8_t runningSchedulePercent = speedPercentForMode(gMode);
     cancelScheduleDrive();
     if (jsonHas(body, "mode")) {
         cfgScheduleMode = (uint8_t)jsonInt(body, "mode", cfgScheduleMode);
@@ -2412,7 +2738,9 @@ static void webPostSchedule() {
     }
     if (jsonHas(body, "tempF")) cfgScheduleTempF = constrain(jsonInt(body, "tempF", cfgScheduleTempF), 40, 110);
     gScheduleWindowWasActive = false;
-    if (scheduleWasDriving && !scheduleShouldRunNow()) fullPowerOff();
+    if (scheduleWasDriving && !scheduleShouldRunNow()) {
+        fullPowerOff(POWER_CAUSE_SCHEDULE_EDIT, runningSchedulePercent);
+    }
     if (jsonInt(body, "save", 1)) saveConfig();
     webOk("schedule");
 }
@@ -2426,6 +2754,7 @@ static void webPostTime() {
         gMillisAtSync = millis();
         gTzOffsetMinutes = (int16_t)constrain(jsonInt(body, "tzOffsetMinutes", 0), -14 * 60, 14 * 60);
         gTimeSynced = true;
+        stampCurrentBootPowerEvents();
     }
     webOk("time");
 }
@@ -2623,7 +2952,9 @@ static void webAdminUpdateUpload(int command, const char* kind) {
     HTTPUpload& upload = webServer.upload();
 
     if (upload.status == UPLOAD_FILE_START) {
-        fullPowerOff();
+        PowerEventCause updateCause = command == U_FLASHFS ? POWER_CAUSE_OTA_LITTLEFS : POWER_CAUSE_OTA_FIRMWARE;
+        recordPowerEvent(POWER_EVENT_SYSTEM, updateCause, 0, gMode, speedPercentForMode(gMode));
+        fullPowerOff(updateCause);
         clearLedPreview();
         renderLeds();
         resetUpdateState(kind);
@@ -2689,7 +3020,8 @@ static void webAdminUpdateFinish() {
 
 static void webPostAdminReboot() {
     if (!webAdminAuthorized()) return;
-    fullPowerOff();
+    recordPowerEvent(POWER_EVENT_SYSTEM, POWER_CAUSE_ADMIN_REBOOT, 0, gMode, speedPercentForMode(gMode));
+    fullPowerOff(POWER_CAUSE_ADMIN_REBOOT);
     gRebootAtMs = millis() + 800;
     webOk("reboot");
 }
@@ -2799,7 +3131,9 @@ void setup() {
     prefs.begin("hfan", false);
     loadConfig();
     loadTempHistory();
-    fullPowerOff();
+    loadPowerLog();
+    recordPowerEvent(POWER_EVENT_BOOT, resetCause());
+    fullPowerOff(POWER_CAUSE_BOOT_SAFETY);
     if (gConfigNeedsSave) saveConfig();
 
     configurePixels();
@@ -2841,6 +3175,8 @@ void loop() {
     serviceWeeklySchedule();
     serviceMotorLogic();
     syncTriacFireSnapshot();
+    servicePowerDiagnostics();
+    servicePowerLogPersistence();
 
     static uint32_t lastLedMs = 0;
     uint32_t now = millis();

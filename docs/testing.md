@@ -14,7 +14,7 @@
 
 ## Current Evidence
 
-- Reference version: `0.3.14-dual-core-fire`.
+- Reference version: `0.3.15-scheduler-power-log`.
 - Zero-cross telemetry near 120 edge events per second on 60 Hz mains.
 - DS18B20 live values with no current read-error accumulation.
 - MOC remains disarmed while OFF; commanded pulse count increments only when armed.
@@ -29,6 +29,18 @@
   and the maximum fire gap was 8,437 us, below a missed 60 Hz half-cycle.
 - DS18B20 recorded zero read, reset, and CRC errors through 67 successful resets
   during the same motor/network load test.
+- A live schedule test selected `CUSTOM` at 93% with the manual custom checkbox
+  false. Status reported mode 13, `motorRequested=true`, `fireAllowed=true`,
+  schedule driving, 93%, and the scheduled 37% LED dimmer after the two-second
+  start boost.
+- Twelve simulated new-device flows each requested session, login, application,
+  config, and status while that 93% schedule was active. TRIAC pulses increased
+  from 868 to 2447, the maximum gap remained 9487 us, and no output-gap or
+  output-blocked event appeared.
+- Restoring the saved Daily schedule produced matching persistent ON/OFF events
+  at 93%, returned the controller to OFF, and preserved the original seven-day
+  schedule values.
+- The matching LittleFS image uses PWA cache `hwf0910at-pwa-v5`.
 
 ## Limitations
 
