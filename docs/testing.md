@@ -14,7 +14,7 @@
 
 ## Current Evidence
 
-- Reference version: `0.3.15-scheduler-power-log`.
+- Reference version: `0.3.16-zc-stability`.
 - Zero-cross telemetry near 120 edge events per second on 60 Hz mains.
 - DS18B20 live values with no current read-error accumulation.
 - MOC remains disarmed while OFF; commanded pulse count increments only when armed.
@@ -40,7 +40,24 @@
 - Restoring the saved Daily schedule produced matching persistent ON/OFF events
   at 93%, returned the controller to OFF, and preserved the original seven-day
   schedule values.
-- The matching LittleFS image uses PWA cache `hwf0910at-pwa-v5`.
+- The 0.3.15 LittleFS image used PWA cache `hwf0910at-pwa-v5`.
+- The 0.3.16 operational sketch compiled at 1,081,817 bytes (82%) with
+  51,684 bytes of global RAM; the public sketch compiled at 1,081,673 bytes.
+- Firmware and LittleFS OTA completed with the saved Daily schedule intact.
+  After local-time synchronization it resumed `CUSTOM` 100%, schedule driving,
+  motor requested, MOC armed, and firing allowed at approximately 120 Hz.
+- Periodic status is 4,568 bytes; the 6,578-byte power log and 1,188-byte
+  temperature history are fetched separately. Installed source and served PWA
+  hashes matched, and the cache is `hwf0910at-pwa-v6`.
+- Twelve complete app-entry flows preserved scheduled output. A subsequent
+  ten-minute test used three clients polling status every three seconds plus a
+  fourth client loading the power log every 30 seconds: 579 status samples, 20
+  log requests, zero HTTP errors, zero invalid fan states, zero unstable ZC
+  samples, and 71,982 additional TRIAC pulses. Maximum request latency reached
+  3.056 seconds without changing AC state; maximum fire gap remained 8,488 us.
+- Final installed state was left running from the saved Daily schedule at
+  `CUSTOM` 100%, with schedule active/driving, MOC armed, firing allowed,
+  120.0 Hz ZC, AC connection count 1, and zero temperature/CRC errors.
 
 ## Limitations
 

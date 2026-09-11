@@ -1088,6 +1088,8 @@ input[type=color]{
     lang:readLocal("fanLang","en"),
     config:{lightsOn:true,ledDimmerPercent:100,buttonEnabled:true,customSpeedEnabled:false,customSpeedPercent:100,ledDataPin:21,leds:FALLBACK_LEDS.map(x=>Object.assign({},x))},
     status:null,
+    powerLog:null,
+    tempHistory:null,
     activity:[],
     detail:null,
     view:"home",
@@ -1477,7 +1479,10 @@ input[type=color]{
     state.view=view==="system"?"system":"home";
     $$("[data-view]").forEach(el=>el.classList.toggle("view-hidden",el.dataset.view!==state.view));
     $$("[data-view-target]").forEach(btn=>btn.classList.toggle("active",btn.dataset.viewTarget===state.view));
-    if(state.view==="system"&&state.loggedIn) updateAdminStatus().catch(()=>{});
+    if(state.view==="system"&&state.loggedIn){
+      updateAdminStatus().catch(()=>{});
+      refreshPowerLog(false);
+    }
     window.scrollTo({top:0,behavior:"smooth"});
   }
   function sliderRaw(v){
@@ -1684,7 +1689,8 @@ input[type=color]{
     };
     let text=(names[event.event]||event.event||"Event")+" · "+powerCauseLabel(event.cause);
     if((event.event==="motor-on"||event.event==="motor-off")&&event.mode) text+=" · "+event.mode+(event.speedPercent?" "+event.speedPercent+"%":"");
-    if(event.event==="output-gap"&&Number(event.detail)>0) text+=" · "+Number(event.detail)+" us";
+    if((event.event==="output-gap"||event.event==="output-blocked")&&Number(event.detail)>0) text+=" · "+Number(event.detail)+" us";
+    if(event.event==="ac-lost"&&Number(event.detail)>0) text+=" · "+(Number(event.detail)/1000).toFixed(0)+" ms";
     return text;
   }
   function powerEventTime(event){
@@ -1695,7 +1701,7 @@ input[type=color]{
     return "+"+Math.round(Number(event.uptimeMs||0)/1000)+"s";
   }
   function powerLogRows(limit){
-    const logData=(state.status&&state.status.powerLog)||{};
+    const logData=state.powerLog||{};
     const events=Array.isArray(logData.events)?logData.events:[];
     if(!events.length) return '<div class="meta-row"><span>'+tr("noPowerEvents")+'</span></div>';
     return events.slice(0,limit||events.length).map(event=>{
@@ -1881,6 +1887,25 @@ input[type=color]{
       setDot("#apiDot","bad");
       $("#syncText").textContent=err.message;
     }).finally(()=>{refreshBusy=false});
+  }
+  function refreshPowerLog(refreshDetail){
+    return apiGet("/api/power-log").then(data=>{
+      state.powerLog=data||{};
+      renderPowerLog();
+      if(refreshDetail&&state.detail==="powerLog"){
+        $("#detailBody").innerHTML=detailHTML("powerLog");
+        wireDetail("powerLog");
+      }
+    }).catch(()=>{});
+  }
+  function refreshTempHistory(refreshDetail){
+    return apiGet("/api/temp-history").then(data=>{
+      state.tempHistory=data||{};
+      if(refreshDetail&&state.detail==="temperature"){
+        $("#detailBody").innerHTML=detailHTML("temperature");
+        wireDetail("temperature");
+      }
+    }).catch(()=>{});
   }
   function loadConfig(){
     return apiGet("/api/config").then(applyConfig).catch(err=>{
@@ -2145,7 +2170,7 @@ input[type=color]{
     return syncTime();
   }
   function tempHistoryDays(){
-    const hist=(state.status&&state.status.tempHistory)||{};
+    const hist=state.tempHistory||{};
     return Array.isArray(hist.days)?hist.days:[];
   }
   function tempHistoryChart(day){
@@ -2839,6 +2864,8 @@ input[type=color]{
     document.body.style.overflow="hidden";
     wireDetail(type);
     $("#detailBack").focus();
+    if(type==="powerLog") refreshPowerLog(true);
+    if(type==="temperature") refreshTempHistory(true);
   }
   function closeDetail(){
     $("#detailOverlay").classList.remove("open");
@@ -2940,7 +2967,8 @@ input[type=color]{
     window.addEventListener("load",()=>navigator.serviceWorker.register("/service-worker.js").catch(()=>{}));
   }
   setInterval(renderClock,1000);
-  setInterval(()=>{if(state.loggedIn) refreshStatus()},1500);
+  setInterval(()=>{if(state.loggedIn) refreshStatus()},3000);
+  setInterval(()=>{if(state.loggedIn&&state.view==="system") refreshPowerLog(false)},30000);
 })();
 </script>
 </body>

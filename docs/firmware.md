@@ -40,6 +40,8 @@ belongs to the following day; equal times disable that interval.
 
 Schedules and their speed/dimmer values persist in ESP32 Preferences NVM.
 Temperature history stores one hourly sample for seven days in NVM.
+Hourly samples are captured in RAM while motor output is active and committed
+after output stops, avoiding flash-backed NVM stalls during TRIAC firing.
 
 Scheduled intermediate speeds use `SPEED_CUSTOM` under schedule ownership. This
 authority is independent of the manual custom-slider checkbox: the checkbox
@@ -48,9 +50,9 @@ own saved 85-100% value without changing that preference.
 
 ## Persistent Power Tracking
 
-Firmware keeps a bounded ring of up to 64 events and exposes the newest entries
-under `powerLog` in `/api/status`. Once local time is synchronized, entries older
-than 24 hours are removed. Events include ESP reset reason, AC detection/loss,
+Firmware keeps a bounded ring of up to 64 events and exposes it on demand at
+`/api/power-log`. Once local time is synchronized, entries older than 24 hours
+are removed. Events include ESP reset reason, AC detection/loss,
 motor ON/OFF and its requesting subsystem, app session checks, MOC output
 blocking/restoration, and TRIAC firing gaps above 12,500 microseconds.
 
@@ -59,6 +61,19 @@ motor request or TRIAC fire task is active, preventing a diagnostic write from
 adding flash latency to phase firing. The next OFF transition commits the full
 pending log. This records software decisions and pulse timing; without a
 tachometer or isolated current sensor it cannot prove physical blade rotation.
+
+## Zero-Cross And AC Sessions
+
+The zero-cross ISR records each rising-edge interval. Pulse age is calculated
+from a timestamp taken after the ISR snapshot, preventing an interrupt between
+the two reads from producing an unsigned underflow and a false stale signal.
+
+A gap shorter than 250 ms can temporarily inhibit firing through the normal
+freshness gate without changing fan mode or schedule ownership. A gap of at
+least 250 ms is treated as an actual AC interruption; the following stable
+return executes the required AC-connected safety OFF. This decision is based on
+the measured pulse interval, not on how long HTTP work delayed the main loop.
+Status exposes both `ageUs` and `sampleElapsedMs` for diagnosis.
 
 ## Build
 

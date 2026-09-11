@@ -16,7 +16,7 @@
 #include "freertos/task.h"
 
 static const char* FW_NAME = "Holmes HWF0910AT Window Fan Smart Mod by Ivves";
-static const char* FW_VERSION = "0.3.15-scheduler-power-log";
+static const char* FW_VERSION = "0.3.16-zc-stability";
 
 static const uint8_t PIN_ZERO_CROSS = 1;
 static const uint8_t PIN_H11_1 = 2;
@@ -35,7 +35,7 @@ static const uint32_t BUTTON_DEBOUNCE_MS = 35;
 static const uint32_t PULSE_SAMPLE_MS = 250;
 static const uint32_t ZC_SAMPLE_MS = 1000;
 static const uint32_t ZC_FRESH_US = 30000;
-static const uint32_t AC_LOST_MS = 1500;
+static const uint32_t AC_RECONNECT_GAP_US = 250000;
 static const uint16_t FAN_START_BOOST_MS = 2000;
 static const uint8_t FAN_CUSTOM_MIN_PERCENT = 85;
 static const uint8_t FAN_CUSTOM_MAX_PERCENT = 100;
@@ -342,6 +342,7 @@ static volatile uint32_t vZcLastEdgeUs = 0;
 static volatile uint32_t vZcLastIntervalUs = 0;
 static volatile uint32_t vZcPulseStartUs = 0;
 static volatile uint32_t vZcPulseWidthUs = 0;
+static volatile uint32_t vZcLongGapPendingUs = 0;
 static volatile bool vZcLevel = false;
 static TaskHandle_t gTriacFireTaskHandle = nullptr;
 static portMUX_TYPE gTriacFireMux = portMUX_INITIALIZER_UNLOCKED;
@@ -360,6 +361,8 @@ static bool gZcStable = false;
 static uint32_t gZcPulseWidthUs = 0;
 static uint32_t gZcIntervalUs = 0;
 static uint32_t gZcLastRiseSnapshotUs = 0;
+static uint32_t gZcLastRiseAgeUs = UINT32_MAX;
+static uint32_t gZcSampleElapsedMs = 0;
 
 static uint32_t gPrevH11Edges[4] = {0, 0, 0, 0};
 static uint32_t gPrevH11SampleMs = 0;
@@ -411,6 +414,7 @@ static uint32_t gBootId = 0;
 static PowerEventCause gPendingMotorCause = POWER_CAUSE_INTERNAL;
 static bool gFireGapLogged = false;
 static bool gPowerLogDirty = false;
+static bool gTempHistoryDirty = false;
 static bool gZcOutputBlockedLogged = false;
 
 static inline bool timeDueUs(uint32_t now, uint32_t due) {
@@ -626,6 +630,13 @@ static void savePowerLog() {
 
 static void servicePowerLogPersistence() {
     if (gPowerLogDirty && !gMotorShouldRun && !vTriacFireEnabled) savePowerLog();
+}
+
+static void serviceTempHistoryPersistence() {
+    if (!gTempHistoryDirty || gMotorShouldRun || vTriacFireEnabled) return;
+    prefs.putBytes("th_day", gTempHistoryDay, sizeof(gTempHistoryDay));
+    prefs.putBytes("th_f", gTempHistoryF, sizeof(gTempHistoryF));
+    gTempHistoryDirty = false;
 }
 
 static bool prunePowerLog(uint32_t nowEpoch) {
@@ -1648,8 +1659,8 @@ static void loadTempHistory() {
 }
 
 static void saveTempHistory() {
-    prefs.putBytes("th_day", gTempHistoryDay, sizeof(gTempHistoryDay));
-    prefs.putBytes("th_f", gTempHistoryF, sizeof(gTempHistoryF));
+    gTempHistoryDirty = true;
+    serviceTempHistoryPersistence();
 }
 
 static int8_t tempHistoryFindDay(uint32_t day) {
@@ -1844,7 +1855,6 @@ static void decodedSliders(bool& saA, bool& saB, bool& sbA, bool& sbB) {
 
 static void servicePulseMetrics() {
     uint32_t nowMs = millis();
-    uint32_t nowUs = micros();
     if (gPrevH11SampleMs == 0) gPrevH11SampleMs = nowMs;
     if (gPrevZcSampleMs == 0) gPrevZcSampleMs = nowMs;
 
@@ -1860,11 +1870,12 @@ static void servicePulseMetrics() {
             level[i] = vH11Level[i];
         }
         interrupts();
+        uint32_t sampleUs = micros();
         for (uint8_t i = 0; i < 4; i++) {
             uint32_t delta = edges[i] - gPrevH11Edges[i];
             gPrevH11Edges[i] = edges[i];
             gH11EdgeHz[i] = ((float)delta * 1000.0f) / (float)elapsed;
-            gH11LastAgeMs[i] = lastUs[i] == 0 ? 0xFFFFFFFFUL : (nowUs - lastUs[i]) / 1000UL;
+            gH11LastAgeMs[i] = lastUs[i] == 0 ? 0xFFFFFFFFUL : (sampleUs - lastUs[i]) / 1000UL;
             gH11Active[i] = delta >= 2 && gH11LastAgeMs[i] < 300;
             (void)level[i];
         }
@@ -1876,12 +1887,16 @@ static void servicePulseMetrics() {
         uint32_t lastRiseUs;
         uint32_t pulseWidthUs;
         uint32_t intervalUs;
+        uint32_t longGapUs;
         noInterrupts();
         riseCount = vZcRiseCount;
         lastRiseUs = vZcLastRiseUs;
         pulseWidthUs = vZcPulseWidthUs;
         intervalUs = vZcLastIntervalUs;
+        longGapUs = vZcLongGapPendingUs;
+        vZcLongGapPendingUs = 0;
         interrupts();
+        uint32_t sampleUs = micros();
 
         uint32_t elapsed = nowMs - gPrevZcSampleMs;
         uint32_t delta = riseCount - gPrevZcRiseCount;
@@ -1890,13 +1905,25 @@ static void servicePulseMetrics() {
         gZcPulseWidthUs = pulseWidthUs;
         gZcIntervalUs = intervalUs;
         gZcLastRiseSnapshotUs = lastRiseUs;
-        bool fresh = lastRiseUs != 0 && (nowUs - lastRiseUs) < ZC_FRESH_US;
+        gZcLastRiseAgeUs = lastRiseUs == 0 ? UINT32_MAX : sampleUs - lastRiseUs;
+        gZcSampleElapsedMs = elapsed;
+        bool fresh = lastRiseUs != 0 && gZcLastRiseAgeUs < ZC_FRESH_US;
         bool wasStable = gZcStable;
         bool stableNow = fresh && gZcHz >= 90.0f && gZcHz <= 150.0f;
+        uint32_t confirmedGapUs = longGapUs >= AC_RECONNECT_GAP_US ? longGapUs :
+                                  (gZcLastRiseAgeUs >= AC_RECONNECT_GAP_US ? gZcLastRiseAgeUs : 0);
+        if (gAcPresent && confirmedGapUs) {
+            gAcPresent = false;
+            recordPowerEvent(POWER_EVENT_AC_LOST, POWER_CAUSE_AC_SIGNAL_LOST,
+                             confirmedGapUs, gMode, speedPercentForMode(gMode));
+            cfgLightsOn = true;
+            enableAllLedSession();
+            clearLedPreview();
+        }
         if (stableNow) {
             if (gZcOutputBlockedLogged && gMotorShouldRun && gMocArmed) {
                 recordPowerEvent(POWER_EVENT_OUTPUT_RESTORED, POWER_CAUSE_AC_SIGNAL_LOST,
-                                 (uint32_t)gZcHz, gMode, speedPercentForMode(gMode));
+                                 intervalUs, gMode, speedPercentForMode(gMode));
             }
             gZcOutputBlockedLogged = false;
             if (!gAcPresent) {
@@ -1907,20 +1934,12 @@ static void servicePulseMetrics() {
             gAcPresent = true;
             gLastAcStableMs = nowMs;
         } else {
-            if (gAcPresent && nowMs - gLastAcStableMs > AC_LOST_MS) {
-                gAcPresent = false;
-                recordPowerEvent(POWER_EVENT_AC_LOST, POWER_CAUSE_AC_SIGNAL_LOST, 0, gMode,
-                                 speedPercentForMode(gMode));
-                cfgLightsOn = true;
-                enableAllLedSession();
-                clearLedPreview();
-            }
             forceMocOff();
         }
         if (wasStable && !stableNow && gMotorShouldRun && gMocArmed) {
             gZcOutputBlockedLogged = true;
             recordPowerEvent(POWER_EVENT_OUTPUT_BLOCKED, POWER_CAUSE_AC_SIGNAL_LOST,
-                             (uint32_t)gZcHz, gMode, speedPercentForMode(gMode));
+                             gZcLastRiseAgeUs, gMode, speedPercentForMode(gMode));
         }
         gZcStable = stableNow;
         gPrevZcSampleMs = nowMs;
@@ -1934,7 +1953,13 @@ static void IRAM_ATTR onZeroCrossChange() {
     vZcEdgeCount++;
     vZcLastEdgeUs = now;
     if (level) {
-        if (vZcLastRiseUs != 0) vZcLastIntervalUs = now - vZcLastRiseUs;
+        if (vZcLastRiseUs != 0) {
+            uint32_t intervalUs = now - vZcLastRiseUs;
+            vZcLastIntervalUs = intervalUs;
+            if (intervalUs >= AC_RECONNECT_GAP_US && intervalUs > vZcLongGapPendingUs) {
+                vZcLongGapPendingUs = intervalUs;
+            }
+        }
         vZcLastRiseUs = now;
         vZcRiseCount++;
         vZcPulseStartUs = now;
@@ -2270,7 +2295,7 @@ static void webStatus() {
     decodedSliders(saA, saB, sbA, sbB);
     const ModeInfo& info = modeInfo(gMode);
     String s;
-    s.reserve(14000);
+    s.reserve(7000);
     s += "{";
     s += "\"name\":\"" + String(FW_NAME) + "\",";
     s += "\"version\":\"" + String(FW_VERSION) + "\",";
@@ -2329,6 +2354,8 @@ static void webStatus() {
          ",\"hz\":" + String(gZcHz, 1) +
          ",\"pulseWidthUs\":" + String(gZcPulseWidthUs) +
          ",\"intervalUs\":" + String(gZcIntervalUs) +
+         ",\"ageUs\":" + String(gZcLastRiseAgeUs) +
+         ",\"sampleElapsedMs\":" + String(gZcSampleElapsedMs) +
          ",\"fresh\":" + jsonBool(zcFresh()) + "},";
     s += "\"h11Modules\":";
     appendH11ModulesJson(s);
@@ -2345,9 +2372,6 @@ static void webStatus() {
          ",\"resetOk\":" + String(gTempResetOkCount) +
          ",\"resetFail\":" + String(gTempResetFailCount) +
          ",\"crcErrors\":" + String(gTempCrcErrors) + "},";
-    s += "\"tempHistory\":";
-    appendTempHistoryJson(s);
-    s += ",";
     s += "\"button\":{\"pin\":" + String(PIN_BUTTON) +
          ",\"pressed\":" + jsonBool(gButtonStablePressed) +
          ",\"enabled\":" + jsonBool(cfgButtonEnabled) +
@@ -2376,14 +2400,27 @@ static void webStatus() {
     s += "\"ac\":{\"present\":" + jsonBool(gAcPresent) +
          ",\"connectOffCount\":" + String(gAcConnectOffCount) +
          ",\"lastStableMs\":" + String(gLastAcStableMs) + "},";
-    s += "\"powerLog\":";
-    appendPowerLogJson(s);
-    s += ",";
     s += "\"wifi\":";
     appendWifiJson(s);
     s += ",\"ota\":";
     appendOtaJson(s);
     s += "}";
+    webServer.send(200, "application/json", s);
+}
+
+static void webPowerLog() {
+    if (!webAuthorized()) return;
+    String s;
+    s.reserve(9000);
+    appendPowerLogJson(s);
+    webServer.send(200, "application/json", s);
+}
+
+static void webTempHistory() {
+    if (!webAuthorized()) return;
+    String s;
+    s.reserve(2200);
+    appendTempHistoryJson(s);
     webServer.send(200, "application/json", s);
 }
 
@@ -3066,6 +3103,8 @@ static void startWeb() {
     webServer.on("/api/session", HTTP_GET, webSession);
     webServer.on("/api/logout", HTTP_POST, webPostLogout);
     webServer.on("/api/status", HTTP_GET, webStatus);
+    webServer.on("/api/power-log", HTTP_GET, webPowerLog);
+    webServer.on("/api/temp-history", HTTP_GET, webTempHistory);
     webServer.on("/api/config", HTTP_GET, webConfig);
     webServer.on("/api/control", HTTP_POST, webPostControl);
     webServer.on("/api/fan", HTTP_POST, webPostFan);
@@ -3177,6 +3216,7 @@ void loop() {
     syncTriacFireSnapshot();
     servicePowerDiagnostics();
     servicePowerLogPersistence();
+    serviceTempHistoryPersistence();
 
     static uint32_t lastLedMs = 0;
     uint32_t now = millis();

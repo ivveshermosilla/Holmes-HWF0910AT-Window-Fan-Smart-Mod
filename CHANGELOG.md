@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.16-zc-stability - 2026-09-11
+
+- Fixed an unsigned timestamp race that could classify a live 120 Hz zero-cross
+  signal as stale for one sample.
+- Replaced loop-delay-based AC reconnection detection with a 250 ms pulse-gap
+  marker captured by the zero-cross ISR. Short disturbances suspend firing but
+  preserve the active mode and schedule.
+- Moved the 24-hour power log and seven-day temperature history to on-demand API
+  endpoints, reducing periodic status from about 11.8 KB to 4.6 KB.
+- Reduced normal PWA polling from 1.5 to 3 seconds and refresh the diagnostic log
+  only while System is visible.
+- Deferred hourly temperature-history NVM writes while TRIAC output is active.
+- Added ZC pulse age and sample elapsed-time telemetry and advanced the PWA cache
+  to `hwf0910at-pwa-v6`.
+- Verified 12 complete app-entry flows followed by 10 minutes with three status
+  clients and one diagnostic client: 579 samples, 71,982 additional pulses, no
+  invalid state or ZC sample, and no additional AC transition.
+
 ## 0.3.15-scheduler-power-log - 2026-09-08
 
 - Fixed scheduled intermediate speeds: schedule-owned `CUSTOM` mode no longer

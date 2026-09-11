@@ -37,6 +37,13 @@ recorded for correlation, but log writes are deferred while motor firing is
 active and committed when the output is stopped. The controller never treats a
 page load or login as a fan command.
 
+Periodic synchronization requests only `/api/status` every three seconds. The
+larger power log is loaded from `/api/power-log` when System is opened and then
+at 30-second intervals while that view remains visible. Seven-day temperature
+history is similarly loaded from `/api/temp-history` only when its detail view
+opens. This keeps ordinary control telemetry responsive on a weak local Wi-Fi
+link without removing either diagnostic record.
+
 The default generic app login is `thankyou` / `youarewelcome`. It is not a cloud
 identity system and should be changed during commissioning.
 
