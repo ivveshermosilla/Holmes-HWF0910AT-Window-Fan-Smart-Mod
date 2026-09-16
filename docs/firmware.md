@@ -101,6 +101,19 @@ The browser displays upload progress; the ESP validates the write and reboots
 automatically after success. Keep power stable. Never upload a filesystem image
 whose size or partition scheme differs from the installed firmware.
 
+## Wi-Fi Recovery
+
+The ESP runs in AP+STA mode. Its recovery AP remains available while STA joins
+the configured 2.4 GHz LAN. STA association uses the ESP auto-reconnect facility
+and an independent non-blocking retry loop. Failed joins retry indefinitely with
+5, 10, 20, and then 30-second intervals, covering the common case where the ESP
+boots faster than the household router after a power outage.
+
+`/api/status` reports the STA status code, recovery state, attempt count,
+consecutive failures, next retry delay, and connection age. The authenticated
+`POST /api/wifi/reconnect` endpoint restarts only STA; it does not change the
+saved schedule or motor command and does not stop the recovery AP.
+
 ## First Commissioning
 
 The public source defaults to AP `IvvesFan-Config` and example subnet

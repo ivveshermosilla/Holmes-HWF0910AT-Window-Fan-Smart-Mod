@@ -14,7 +14,7 @@
 
 ## Current Evidence
 
-- Reference version: `0.3.16-zc-stability`.
+- Reference version: `0.3.17-wifi-recovery`.
 - Zero-cross telemetry near 120 edge events per second on 60 Hz mains.
 - DS18B20 live values with no current read-error accumulation.
 - MOC remains disarmed while OFF; commanded pulse count increments only when armed.
@@ -58,6 +58,16 @@
 - Final installed state was left running from the saved Daily schedule at
   `CUSTOM` 100%, with schedule active/driving, MOC armed, firing allowed,
   120.0 Hz ZC, AC connection count 1, and zero temperature/CRC errors.
+- The 0.3.17 operational sketch compiled at 1,083,953 bytes (82%) with
+  51,716 bytes of global RAM; the public sketch compiled at 1,083,821 bytes.
+- Firmware and LittleFS OTA succeeded through the recovery AP. After reboot the
+  ESP associated with the saved SSID, restored static `192.168.75.150`, and
+  served authenticated status through both AP and LAN.
+- A manual STA-only disconnect/reconnect increased the attempt counter from one
+  to two. During the test TRIAC pulses advanced from 1,386 to 1,641 while
+  `motorRequested`, `mocArmed`, and `fireAllowed` all remained true.
+- The final PWA cache is `hwf0910at-pwa-v7`; its top indicator distinguishes
+  `LAN connected` from `Recovery AP`.
 
 ## Limitations
 

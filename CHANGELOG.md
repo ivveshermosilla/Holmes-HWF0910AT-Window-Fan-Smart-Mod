@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.17-wifi-recovery - 2026-09-15
+
+- Added indefinite, non-blocking STA recovery with ESP auto-reconnect plus
+  explicit retries at 5, 10, 20, and 30-second maximum intervals.
+- Kept the recovery AP available while the household router is absent or still
+  booting after a power outage.
+- Added STA recovery telemetry and a manual `Reconnect LAN` command that does
+  not alter fan, schedule, LED, or TRIAC state.
+- Corrected the PWA indicator so browser access through the ESP recovery AP is
+  no longer mislabeled as a successful LAN connection.
+- Advanced the PWA cache to `hwf0910at-pwa-v7`.
+- Verified a forced STA reconnection while a saved Daily schedule was driving
+  the fan: TRIAC pulses continued, motor/MOC gates stayed active, and the static
+  address returned at `192.168.75.150`.
+
 ## 0.3.16-zc-stability - 2026-09-11
 
 - Fixed an unsigned timestamp race that could classify a live 120 Hz zero-cross

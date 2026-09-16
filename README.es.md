@@ -33,6 +33,8 @@ correcciones, las decisiones de seguridad, la integración y las pruebas.
 - Registro persistente de 24 horas para causas de reinicio, AC, comandos y pulsos TRIAC.
 - Configuración por AP, Wi-Fi 2.4 GHz, IP fija configurable y OTA separada para
   firmware y LittleFS.
+- Reconexión LAN automática e indefinida después de reinicios o apagones,
+  manteniendo disponible el AP de recuperación.
 - PWA bilingüe y adaptable a móvil y escritorio.
 
 ## Organización

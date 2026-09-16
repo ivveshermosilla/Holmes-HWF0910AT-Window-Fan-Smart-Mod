@@ -16,7 +16,7 @@
 #include "freertos/task.h"
 
 static const char* FW_NAME = "Holmes HWF0910AT Window Fan Smart Mod by Ivves";
-static const char* FW_VERSION = "0.3.16-zc-stability";
+static const char* FW_VERSION = "0.3.17-wifi-recovery";
 
 static const uint8_t PIN_ZERO_CROSS = 1;
 static const uint8_t PIN_H11_1 = 2;
@@ -70,6 +70,8 @@ static const uint8_t POWER_LOG_MAX_EVENTS = 64;
 static const uint32_t POWER_LOG_MAGIC = 0x48574650UL;
 static const uint8_t POWER_LOG_VERSION = 1;
 static const uint32_t FIRE_GAP_WARNING_US = 12500;
+static const uint32_t WIFI_RETRY_MIN_MS = 5000;
+static const uint32_t WIFI_RETRY_MAX_MS = 30000;
 
 enum ScheduleTempRule : uint8_t {
     SCHEDULE_TEMP_NONE = 0,
@@ -279,6 +281,16 @@ static bool gStaStarted = false;
 static bool gMdnsStarted = false;
 static uint32_t gLastWifiServiceMs = 0;
 static uint32_t gWifiRestartAtMs = 0;
+static uint32_t gWifiStaReconnectAtMs = 0;
+static uint32_t gWifiNextRetryMs = 0;
+static uint32_t gWifiConnectedSinceMs = 0;
+static uint32_t gWifiLastConnectedMs = 0;
+static uint32_t gWifiLastDisconnectedMs = 0;
+static uint32_t gWifiAttemptCount = 0;
+static uint32_t gWifiConsecutiveFailures = 0;
+static uint8_t gWifiLastStatus = WL_IDLE_STATUS;
+static bool gWifiWasConnected = false;
+static const char* gWifiRecoveryState = "ap-only";
 static bool gBoardLedOn = false;
 
 static FanMode gMode = MODE_OFF_LOOP;
@@ -1998,6 +2010,45 @@ static void IRAM_ATTR onH11_4() {
     vH11Level[3] = gpio_get_level((gpio_num_t)PIN_H11_4);
 }
 
+static bool configureStaNetwork() {
+    if (cfgStaStaticEnabled) {
+        IPAddress ip, gw, subnet, dns;
+        if (!parseIpString(cfgStaIp, ip) || !parseIpString(cfgStaGateway, gw) ||
+            !parseIpString(cfgStaSubnet, subnet) || !parseIpString(cfgStaDns, dns)) {
+            return false;
+        }
+        return WiFi.config(ip, gw, subnet, dns);
+    }
+    return WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+}
+
+static uint32_t wifiRetryDelayMs() {
+    if (gWifiConsecutiveFailures <= 1) return WIFI_RETRY_MIN_MS;
+    uint32_t shift = (uint32_t)gWifiConsecutiveFailures - 1;
+    if (shift > 3) shift = 3;
+    uint32_t delayMs = WIFI_RETRY_MIN_MS << shift;
+    return delayMs > WIFI_RETRY_MAX_MS ? WIFI_RETRY_MAX_MS : delayMs;
+}
+
+static void beginStaAttempt(bool resetLink, const char* reason) {
+    if (!gStaStarted || !cfgStaSsid.length()) return;
+    if (resetLink) {
+        WiFi.disconnect(false, false);
+        gWifiWasConnected = false;
+        gWifiConnectedSinceMs = 0;
+        gWifiLastDisconnectedMs = millis();
+    }
+    configureStaNetwork();
+    WiFi.begin(cfgStaSsid.c_str(), cfgStaPass.length() ? cfgStaPass.c_str() : nullptr);
+    gWifiAttemptCount++;
+    gWifiConsecutiveFailures++;
+    gWifiRecoveryState = "connecting";
+    gWifiNextRetryMs = millis() + wifiRetryDelayMs();
+    Serial0.printf("[WIFI] STA attempt %lu (%s) to %s; next retry in %lu ms\n",
+                   (unsigned long)gWifiAttemptCount, reason, cfgStaSsid.c_str(),
+                   (unsigned long)wifiRetryDelayMs());
+}
+
 static void startWifi() {
     if (gMdnsStarted) {
         MDNS.end();
@@ -2006,6 +2057,7 @@ static void startWifi() {
 
     WiFi.persistent(false);
     WiFi.setSleep(false);
+    WiFi.setAutoReconnect(true);
     WiFi.disconnect(false, false);
     delay(50);
     WiFi.mode(WIFI_AP_STA);
@@ -2013,22 +2065,20 @@ static void startWifi() {
     WiFi.softAP(cfgApSsid.c_str(), cfgApPass.c_str(), 1, false, 4);
 
     gStaStarted = cfgStaSsid.length() > 0;
+    gWifiAttemptCount = 0;
+    gWifiConsecutiveFailures = 0;
+    gWifiWasConnected = false;
+    gWifiConnectedSinceMs = 0;
+    gWifiLastStatus = WiFi.status();
     if (!gStaStarted) {
+        gWifiRecoveryState = "ap-only";
+        gWifiNextRetryMs = 0;
         Serial0.printf("[WIFI] AP only %s at %s\n",
                        cfgApSsid.c_str(), WiFi.softAPIP().toString().c_str());
         return;
     }
 
-    if (cfgStaStaticEnabled) {
-        IPAddress ip, gw, subnet, dns;
-        if (parseIpString(cfgStaIp, ip) && parseIpString(cfgStaGateway, gw) &&
-            parseIpString(cfgStaSubnet, subnet) && parseIpString(cfgStaDns, dns)) {
-            WiFi.config(ip, gw, subnet, dns);
-        }
-    } else {
-        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
-    }
-    WiFi.begin(cfgStaSsid.c_str(), cfgStaPass.length() ? cfgStaPass.c_str() : nullptr);
+    beginStaAttempt(false, "startup");
     Serial0.printf("[WIFI] AP %s at %s; STA connecting to %s hostname=%s\n",
                    cfgApSsid.c_str(), WiFi.softAPIP().toString().c_str(),
                    cfgStaSsid.c_str(), cfgHostname.c_str());
@@ -2041,10 +2091,29 @@ static void serviceWifi() {
         startWifi();
         return;
     }
-    if (now - gLastWifiServiceMs < 2000) return;
+    if (gWifiStaReconnectAtMs && timeDueUs(now, gWifiStaReconnectAtMs)) {
+        gWifiStaReconnectAtMs = 0;
+        gWifiConsecutiveFailures = 0;
+        beginStaAttempt(true, "manual");
+        return;
+    }
+    if (now - gLastWifiServiceMs < 1000) return;
     gLastWifiServiceMs = now;
     if (!gStaStarted) return;
-    if (WiFi.status() == WL_CONNECTED) {
+    wl_status_t status = WiFi.status();
+    gWifiLastStatus = (uint8_t)status;
+    if (status == WL_CONNECTED) {
+        if (!gWifiWasConnected) {
+            gWifiWasConnected = true;
+            gWifiConnectedSinceMs = now;
+            gWifiLastConnectedMs = now;
+            gWifiConsecutiveFailures = 0;
+            gWifiNextRetryMs = 0;
+            gWifiRecoveryState = "connected";
+            Serial0.printf("[WIFI] STA connected at %s after %lu attempt(s)\n",
+                           WiFi.localIP().toString().c_str(),
+                           (unsigned long)gWifiAttemptCount);
+        }
         if (!gMdnsStarted && MDNS.begin(cfgHostname.c_str())) {
             MDNS.addService("http", "tcp", 80);
             gMdnsStarted = true;
@@ -2052,9 +2121,22 @@ static void serviceWifi() {
                            WiFi.localIP().toString().c_str(), cfgHostname.c_str());
         }
     } else {
+        if (gWifiWasConnected) {
+            gWifiWasConnected = false;
+            gWifiConnectedSinceMs = 0;
+            gWifiLastDisconnectedMs = now;
+            gWifiConsecutiveFailures = 0;
+            gWifiNextRetryMs = now + WIFI_RETRY_MIN_MS;
+            gWifiRecoveryState = "waiting-retry";
+            Serial0.printf("[WIFI] STA disconnected (status %u); automatic recovery armed\n",
+                           (unsigned int)gWifiLastStatus);
+        }
         if (gMdnsStarted) {
             MDNS.end();
             gMdnsStarted = false;
+        }
+        if (!gWifiNextRetryMs || timeDueUs(now, gWifiNextRetryMs)) {
+            beginStaAttempt(true, "automatic-recovery");
         }
     }
 }
@@ -2221,6 +2303,10 @@ static void appendPartitionJson(String& s, const esp_partition_t* part) {
 
 static void appendWifiJson(String& s) {
     bool staConnected = WiFi.status() == WL_CONNECTED;
+    uint32_t now = millis();
+    uint32_t nextRetryInMs = (!staConnected && gWifiNextRetryMs && !timeDueUs(now, gWifiNextRetryMs))
+                                     ? gWifiNextRetryMs - now
+                                     : 0;
     String liveGateway = staConnected ? WiFi.gatewayIP().toString() : String("");
     String liveSubnet = staConnected ? WiFi.subnetMask().toString() : String("");
     String liveDns = staConnected ? WiFi.dnsIP().toString() : String("");
@@ -2240,7 +2326,15 @@ static void appendWifiJson(String& s) {
          "\",\"dns\":\"" + jsonEscape(cfgStaDns) +
          "\",\"hostname\":\"" + jsonEscape(cfgHostname) +
          "\",\"mdns\":" + jsonBool(gMdnsStarted) +
-         ",\"rssi\":" + String(staConnected ? WiFi.RSSI() : 0) + "}";
+         ",\"rssi\":" + String(staConnected ? WiFi.RSSI() : 0) +
+         ",\"statusCode\":" + String(gWifiLastStatus) +
+         ",\"recoveryState\":\"" + String(gWifiRecoveryState) +
+         "\",\"attemptCount\":" + String(gWifiAttemptCount) +
+         ",\"consecutiveFailures\":" + String(gWifiConsecutiveFailures) +
+         ",\"nextRetryInMs\":" + String(nextRetryInMs) +
+         ",\"connectedForMs\":" + String(staConnected && gWifiConnectedSinceMs ? now - gWifiConnectedSinceMs : 0) +
+         ",\"lastConnectedAgoMs\":" + String(gWifiLastConnectedMs ? now - gWifiLastConnectedMs : 0) +
+         ",\"lastDisconnectedAgoMs\":" + String(gWifiLastDisconnectedMs ? now - gWifiLastDisconnectedMs : 0) + "}";
 }
 
 static void appendOtaJson(String& s) {
@@ -2841,6 +2935,16 @@ static void webGetWifiScan() {
     webServer.send(200, "application/json", s);
 }
 
+static void webPostWifiReconnect() {
+    if (!webAuthorized()) return;
+    if (!cfgStaSsid.length()) {
+        webServer.send(409, "application/json", "{\"ok\":false,\"msg\":\"sta-not-configured\"}");
+        return;
+    }
+    gWifiStaReconnectAtMs = millis() + 250;
+    webServer.send(200, "application/json", "{\"ok\":true,\"msg\":\"sta-reconnect-scheduled\"}");
+}
+
 static void webPostWifiStatic() {
     if (!webAuthorized()) return;
     if (WiFi.status() != WL_CONNECTED) {
@@ -3123,6 +3227,7 @@ static void startWeb() {
     webServer.on("/api/time", HTTP_POST, webPostTime);
     webServer.on("/api/wifi/scan", HTTP_POST, webPostWifiScan);
     webServer.on("/api/wifi/scan", HTTP_GET, webGetWifiScan);
+    webServer.on("/api/wifi/reconnect", HTTP_POST, webPostWifiReconnect);
     webServer.on("/api/wifi/static", HTTP_POST, webPostWifiStatic);
     webServer.on("/api/settings", HTTP_POST, webPostSettings);
     webServer.on("/api/save", HTTP_POST, webPostSave);

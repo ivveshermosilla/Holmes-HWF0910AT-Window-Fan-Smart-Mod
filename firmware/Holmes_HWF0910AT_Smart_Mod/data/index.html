@@ -981,6 +981,7 @@ input[type=color]{
       <div class="eyebrow"><strong data-i18n="wifi">Local Wi-Fi</strong><span id="wifiStateTag">--</span></div>
       <div class="inline-actions">
         <button class="action-btn subtle" id="wifiScanBtn" type="button"><span>⌁</span><span data-i18n="scanNetworks">Scan networks</span></button>
+        <button class="action-btn subtle" id="wifiReconnectBtn" type="button"><span>↻</span><span data-i18n="reconnectLan">Reconnect LAN</span></button>
       </div>
       <div class="wifi-network-list" id="wifiNetworkList"><span class="wifi-empty" data-i18n="scanToSelect">Scan to select a network</span></div>
       <div class="field-grid">
@@ -1143,7 +1144,7 @@ input[type=color]{
       wifi:"Wi-Fi local",ota:"Actualizacion remota",admin:"Admin",username:"Usuario",password:"Contrasena",
       connect:"Conectar",uploadFw:"Subir firmware",uploadFs:"Subir LittleFS",changeAdmin:"Cambiar admin",
       hostname:"Hostname",staticIp:"IP estatica",gateway:"Gateway",subnet:"Subnet",dns:"DNS",
-      adminHint:"Protegido por admin:admin hasta que lo cambies.",scanNetworks:"Buscar redes",scanToSelect:"Busca para seleccionar una red",selectedNetwork:"Red seleccionada",connectDhcp:"Conectar por DHCP",setStaticIp:"Fijar IP estatica",scanning:"Buscando redes",noNetworks:"No se encontraron redes",connectingWifi:"Conectando",wifiConnected:"Conectado",wifiStaticSaved:"IP estatica guardada"
+      adminHint:"Protegido por admin:admin hasta que lo cambies.",scanNetworks:"Buscar redes",scanToSelect:"Busca para seleccionar una red",selectedNetwork:"Red seleccionada",connectDhcp:"Conectar por DHCP",setStaticIp:"Fijar IP estatica",scanning:"Buscando redes",noNetworks:"No se encontraron redes",connectingWifi:"Conectando",wifiConnected:"LAN conectada",wifiStaticSaved:"IP estatica guardada",reconnectLan:"Reconectar LAN",apRecovery:"AP de recuperacion",retryingWifi:"Reintentando"
       ,timeSchedule:"Hora y programacion",weeklySchedule:"Programacion",weekly:"Semanal",daily:"Diario",sameDay:"Mismo dia",overnight:"Nocturno",invalidSchedule:"Inicio y termino no pueden ser iguales",scheduleSpeed:"Velocidad programada",scheduleDimmer:"Dimmer programado",startTime:"Inicio",endTime:"Termino",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutos",remaining:"Restante",savePalette:"Guardar LED 1-7",logout:"Salir",powerTracking:"Registro de energia",last24Hours:"ultimas 24 h",noPowerEvents:"Sin eventos registrados"
     },
     en:{
@@ -1175,7 +1176,7 @@ input[type=color]{
       wifi:"Local Wi-Fi",ota:"Remote update",admin:"Admin",username:"Username",password:"Password",
       connect:"Connect",uploadFw:"Upload firmware",uploadFs:"Upload LittleFS",changeAdmin:"Change admin",
       hostname:"Hostname",staticIp:"Static IP",gateway:"Gateway",subnet:"Subnet",dns:"DNS",
-      adminHint:"Protected by admin:admin until you change it.",scanNetworks:"Scan networks",scanToSelect:"Scan to select a network",selectedNetwork:"Selected network",connectDhcp:"Connect with DHCP",setStaticIp:"Set static IP",scanning:"Scanning networks",noNetworks:"No networks found",connectingWifi:"Connecting",wifiConnected:"Connected",wifiStaticSaved:"Static IP saved"
+      adminHint:"Protected by admin:admin until you change it.",scanNetworks:"Scan networks",scanToSelect:"Scan to select a network",selectedNetwork:"Selected network",connectDhcp:"Connect with DHCP",setStaticIp:"Set static IP",scanning:"Scanning networks",noNetworks:"No networks found",connectingWifi:"Connecting",wifiConnected:"LAN connected",wifiStaticSaved:"Static IP saved",reconnectLan:"Reconnect LAN",apRecovery:"Recovery AP",retryingWifi:"Retrying"
       ,timeSchedule:"Time and Schedule",weeklySchedule:"Schedule",weekly:"Weekly",daily:"Daily",sameDay:"Same day",overnight:"Overnight",invalidSchedule:"Start and End cannot match",scheduleSpeed:"Scheduled speed",scheduleDimmer:"Scheduled dimmer",startTime:"Start",endTime:"End",timerOn:"Timer ON",timerOff:"Timer OFF",minutes:"Minutes",remaining:"Remaining",savePalette:"Save LED 1-7",logout:"Logout",powerTracking:"Power tracking",last24Hours:"last 24 h",noPowerEvents:"No events recorded"
     }
   };
@@ -1751,6 +1752,11 @@ input[type=color]{
     if(sta) sta.textContent=connected?(ip||"--"):tr("offline");
     if(rssi) rssi.textContent=connected?String(wifi.rssi||0)+" dBm":"--";
     if(tag) tag.textContent=connected?(wifi.staStatic?"STATIC":"DHCP"):tr("offline");
+    const apiText=$("#apiText"),apiDot=$("#apiDot");
+    if(apiText) apiText.textContent=connected?(tr("wifiConnected")+" · "+ip):tr("apRecovery");
+    if(apiDot) setDot("#apiDot",connected?"":"warn");
+    const reconnect=$("#wifiReconnectBtn");
+    if(reconnect) reconnect.disabled=!wifi.staEnabled;
     const controls=$("#staticIpControls"),button=$("#saveStaticIp"),prefix=$("#staticIpPrefix"),last=$("#staticLastOctet");
     if(controls) controls.classList.toggle("disabled",!connected);
     if(button) button.disabled=!connected;
@@ -1760,6 +1766,12 @@ input[type=color]{
       last.value=String((wifi.staStatic&&configured?configured[3]:150));
     }
     if(connected&&!state.selectedWifiSsid) state.selectedWifiSsid=wifi.staSsid||"";
+    if(connected&&!wifiScanTimer&&!wifiConnectTimer){
+      setWifiNote(tr("wifiConnected")+" · "+ip);
+    }else if(!connected&&!wifiScanTimer&&!wifiConnectTimer){
+      const retrySeconds=Math.ceil(Number(wifi.nextRetryInMs||0)/1000);
+      setWifiNote(tr("retryingWifi")+" · #"+Number(wifi.attemptCount||0)+(retrySeconds?" · "+retrySeconds+" s":""));
+    }
   }
   function applyConfig(c){
     state.config=Object.assign(state.config,c||{});
@@ -1788,8 +1800,6 @@ input[type=color]{
     state.status=s||{};
     if(s.schedule&&Date.now()>=state.scheduleDirtyUntil) state.config.schedule=Object.assign({},s.schedule);
     state.lastSync=new Date();
-    $("#apiText").textContent=tr("connected");
-    setDot("#apiDot","");
     $("#syncText").textContent=fmtTime(state.lastSync);
     setDot("#syncDot","");
     $("#fwText").textContent=s.version||"--";
@@ -2458,6 +2468,7 @@ input[type=color]{
   }
   function pollWifiScan(){
     clearTimeout(wifiScanTimer);
+    wifiScanTimer=0;
     apiGet("/api/wifi/scan").then(data=>{
       if(data.scanning){
         setWifiNote(tr("scanning")+"...");
@@ -2483,6 +2494,7 @@ input[type=color]{
   }
   function pollWifiConnection(expectedSsid,deadline){
     clearTimeout(wifiConnectTimer);
+    wifiConnectTimer=0;
     apiGet("/api/status").then(data=>{
       applyStatus(data);
       const wifi=data.wifi||{};
@@ -2512,6 +2524,14 @@ input[type=color]{
       log(tr("wifi")+" · "+ssid+" · DHCP");
       wifiConnectTimer=setTimeout(()=>pollWifiConnection(ssid,Date.now()+25000),1200);
     }).catch(err=>toast("Wi-Fi error "+err.message));
+  }
+  function reconnectWifi(){
+    clearTimeout(wifiConnectTimer);
+    wifiConnectTimer=0;
+    setWifiNote(tr("retryingWifi")+"...");
+    apiPost("/api/wifi/reconnect",{}).then(()=>{
+      wifiConnectTimer=setTimeout(()=>pollWifiConnection(state.selectedWifiSsid,Date.now()+45000),800);
+    }).catch(err=>setWifiNote("Wi-Fi reconnect error · "+err.message));
   }
   function saveStaticIp(){
     const lastOctet=Math.max(2,Math.min(254,Number($("#staticLastOctet").value)||150));
@@ -2902,6 +2922,7 @@ input[type=color]{
     $("#speedNumber").addEventListener("input",()=>speedInput("number"));
     $("#buttonEnabled").addEventListener("change",setButtonEnabled);
     $("#wifiScanBtn").addEventListener("click",scanWifiNetworks);
+    $("#wifiReconnectBtn").addEventListener("click",reconnectWifi);
     $("#staSsid").addEventListener("input",event=>{state.selectedWifiSsid=event.target.value.trim()});
     $("#saveWifi").addEventListener("click",saveWifiSettings);
     $("#saveStaticIp").addEventListener("click",saveStaticIp);

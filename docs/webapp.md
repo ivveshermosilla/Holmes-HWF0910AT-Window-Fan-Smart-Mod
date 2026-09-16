@@ -7,7 +7,7 @@ single-page application with Home/System views and glass-styled detail overlays.
 
 ## Home
 
-- Live Wi-Fi, clock sync, zero-cross, and firmware indicators.
+- Live LAN/AP-recovery, clock sync, zero-cross, and firmware indicators.
 - Temperature summary and seven-day hourly detail history.
 - Explicit POWER ON (HI) and Power off commands.
 - Fan state, shared 85-100% control, HIGH/LOW/temperature presets, and sliders.
@@ -20,7 +20,8 @@ single-page application with Home/System views and glass-styled detail overlays.
 - Device-health command telemetry and zero-cross/H11 module activity.
 - Persistent Power tracking for the last 24 hours, including reset, AC,
   motor-command, schedule, timer, web, and TRIAC timing causes.
-- Wi-Fi scanning, password entry, DHCP connection, and last-octet static-IP setup.
+- Wi-Fi scanning, password entry, DHCP connection, last-octet static-IP setup,
+  recovery telemetry, and a manual STA-only reconnect command.
 - Separate OTA upload controls for firmware and LittleFS with progress/reboot.
 
 ## Session Behavior
