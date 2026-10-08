@@ -14,7 +14,7 @@
 
 ## Current Evidence
 
-- Reference version: `0.3.17-wifi-recovery`.
+- Reference version: `0.3.18-schedule-clock`.
 - Zero-cross telemetry near 120 edge events per second on 60 Hz mains.
 - DS18B20 live values with no current read-error accumulation.
 - MOC remains disarmed while OFF; commanded pulse count increments only when armed.
@@ -68,6 +68,21 @@
   `motorRequested`, `mocArmed`, and `fireAllowed` all remained true.
 - The final PWA cache is `hwf0910at-pwa-v7`; its top indicator distinguishes
   `LAN connected` from `Recovery AP`.
+- On 0.3.17 after a power-on reset, the saved schedule was still present but
+  `time.synced=false` after more than 15 hours. A manually running fan prevented
+  the previous browser fallback from setting the clock.
+- On 0.3.18, a boot reached `time.synced=true`, source `ntp`, UTC-6 without
+  opening the PWA. The operational/public sketches compiled at 1,101,757 /
+  1,101,629 bytes (84%); global RAM was 51,900 bytes (15%).
+- Manual HIGH before 10:48 stayed on through the window and ended by
+  `schedule-end` exactly at 10:49:00. A separate 10:51-10:52 window started
+  automatically at CUSTOM 93%; changing to manual LOW left the window active
+  and produced `schedule-end` at 10:52:00.
+- Reboot into an active window initially exposed an early start before AC was
+  confirmed. The final build gates schedule starts on confirmed AC: boot and
+  `ac-present` logged OFF, followed by `schedule-start` about two seconds later.
+- A forced STA reconnect preserved the clock and schedule. The original Daily
+  schedule was restored and verified on all seven days after testing.
 
 ## Limitations
 

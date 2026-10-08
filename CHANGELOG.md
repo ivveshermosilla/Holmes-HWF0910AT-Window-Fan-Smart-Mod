@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.18-schedule-clock - 2026-10-08
+
+- Restored autonomous time after reboot through SNTP, using Denver local time
+  and its daylight-saving transitions for schedule boundaries.
+- Kept browser time sync as a fallback even when a manually started fan is on.
+- Made each active schedule window enforce its end time after manual web or
+  physical-button changes cancel schedule-owned speed control.
+- Preserved an already running manual mode when a schedule window begins; the
+  schedule still turns it off at that window's end.
+- Required confirmed VAC and a two-second safety interval before an active
+  schedule resumes after boot or AC reconnection.
+- Updated the PWA cache to `hwf0910at-pwa-v8`.
+- Verified manual HIGH before a window, automatic scheduled start, manual LOW
+  during a window, exact scheduled shutdowns, STA reconnection, and reboot
+  into an active window. Restored the original seven-day schedule afterward.
+
 ## 0.3.17-wifi-recovery - 2026-09-15
 
 - Added indefinite, non-blocking STA recovery with ESP auto-reconnect plus

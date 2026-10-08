@@ -7,16 +7,20 @@
 #include <ESPmDNS.h>
 #include <Adafruit_NeoPixel.h>
 #include <math.h>
+#include <time.h>
+#include <sys/time.h>
 #include "driver/gpio.h"
 #include "esp_system.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "esp_sntp.h"
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static const char* FW_NAME = "Holmes HWF0910AT Window Fan Smart Mod by Ivves";
-static const char* FW_VERSION = "0.3.17-wifi-recovery";
+static const char* FW_VERSION = "0.3.18-schedule-clock";
+static const char* TIMEZONE_RULE = "MST7MDT,M3.2.0,M11.1.0";
 
 static const uint8_t PIN_ZERO_CROSS = 1;
 static const uint8_t PIN_H11_1 = 2;
@@ -328,12 +332,16 @@ static bool gTimeSynced = false;
 static uint32_t gEpochAtSync = 0;
 static uint32_t gMillisAtSync = 0;
 static int16_t gTzOffsetMinutes = 0;
+static uint32_t gLastClockServiceMs = 0;
+static const char* gClockSource = "none";
+static volatile bool gNtpSyncReceived = false;
 static bool gDurationTimerActive = false;
 static uint32_t gDurationOffAtMs = 0;
 static bool gClockTimerActive = false;
 static uint32_t gClockOffAtEpoch = 0;
 static bool gScheduleWindowWasActive = false;
 static bool gScheduleDriving = false;
+static uint32_t gScheduleAcResumeAtMs = 0;
 static bool gScheduleOverridesApplied = false;
 static uint8_t gSchedulePreviousSpeedPercent = FAN_CUSTOM_DEFAULT_PERCENT;
 static uint8_t gSchedulePreviousLedDimmerPercent = 100;
@@ -1573,20 +1581,46 @@ static void serviceButton() {
 
 static uint32_t localEpochNow() {
     if (!gTimeSynced) return 0;
-    return gEpochAtSync + ((millis() - gMillisAtSync) / 1000UL);
+    time_t now = time(nullptr);
+    return now > 1735689600 ? (uint32_t)now :
+           gEpochAtSync + ((millis() - gMillisAtSync) / 1000UL);
 }
 
 static uint8_t localWeekdayMondayFirst(uint32_t epoch) {
-    int64_t localSeconds = (int64_t)epoch + (int32_t)gTzOffsetMinutes * 60LL;
-    if (localSeconds < 0) localSeconds = 0;
-    uint32_t day = (uint32_t)(localSeconds / 86400LL);
-    return (uint8_t)((day + 3) % 7);
+    time_t seconds = (time_t)epoch;
+    struct tm local;
+    localtime_r(&seconds, &local);
+    return (uint8_t)((local.tm_wday + 6) % 7);
 }
 
 static uint16_t localMinuteOfDay(uint32_t epoch) {
-    int64_t localSeconds = (int64_t)epoch + (int32_t)gTzOffsetMinutes * 60LL;
-    if (localSeconds < 0) localSeconds = 0;
-    return (uint16_t)((localSeconds % 86400LL) / 60LL);
+    time_t seconds = (time_t)epoch;
+    struct tm local;
+    localtime_r(&seconds, &local);
+    return (uint16_t)(local.tm_hour * 60 + local.tm_min);
+}
+
+static void onNtpTimeSync(struct timeval*) {
+    gNtpSyncReceived = true;
+}
+
+static void serviceClock() {
+    uint32_t nowMs = millis();
+    if (nowMs - gLastClockServiceMs < 1000) return;
+    gLastClockServiceMs = nowMs;
+    time_t now = time(nullptr);
+    if (now <= 1735689600) return;
+    struct tm utc;
+    gmtime_r(&now, &utc);
+    utc.tm_isdst = -1;
+    gTzOffsetMinutes = (int16_t)(difftime(now, mktime(&utc)) / 60);
+    if (gNtpSyncReceived) gClockSource = "ntp";
+    if (!gTimeSynced) {
+        gTimeSynced = true;
+        if (strcmp(gClockSource, "none") == 0) gClockSource = "ntp";
+        stampCurrentBootPowerEvents();
+        Serial0.printf("[TIME] Clock ready, UTC offset %d minutes\n", gTzOffsetMinutes);
+    }
 }
 
 static bool scheduleIntervalActive(uint8_t startDay, uint16_t startMin, uint16_t endMin,
@@ -1627,19 +1661,24 @@ static bool scheduleShouldRunNow() {
 }
 
 static void serviceWeeklySchedule() {
+    if (!gTimeSynced || !gAcPresent) return;
+    if (gScheduleAcResumeAtMs && !timeDueUs(millis(), gScheduleAcResumeAtMs)) return;
+    gScheduleAcResumeAtMs = 0;
     bool activeNow = scheduleShouldRunNow();
     if (activeNow && !gScheduleWindowWasActive) {
-        restoreScheduleOverrides();
-        gSchedulePreviousSpeedPercent = cfgCustomSpeedPercent;
-        gSchedulePreviousLedDimmerPercent = cfgLedDimmerPercent;
-        gScheduleOverridesApplied = true;
-        cfgCustomSpeedPercent = cfgScheduleSpeedPercent;
-        cfgLedDimmerPercent = cfgScheduleLedDimmerPercent;
-        FanMode scheduledMode = cfgScheduleSpeed == SPEED_CUSTOM ? MODE_CUSTOM :
-                                modeFromOriginalChoice(cfgScheduleSpeed, 0);
-        setModeFromWeb(scheduledMode, POWER_CAUSE_SCHEDULE_START);
-        gScheduleDriving = true;
-        renderLeds();
+        if (!modeIsActive(gMode)) {
+            restoreScheduleOverrides();
+            gSchedulePreviousSpeedPercent = cfgCustomSpeedPercent;
+            gSchedulePreviousLedDimmerPercent = cfgLedDimmerPercent;
+            gScheduleOverridesApplied = true;
+            cfgCustomSpeedPercent = cfgScheduleSpeedPercent;
+            cfgLedDimmerPercent = cfgScheduleLedDimmerPercent;
+            FanMode scheduledMode = cfgScheduleSpeed == SPEED_CUSTOM ? MODE_CUSTOM :
+                                    modeFromOriginalChoice(cfgScheduleSpeed, 0);
+            setModeFromWeb(scheduledMode, POWER_CAUSE_SCHEDULE_START);
+            gScheduleDriving = true;
+            renderLeds();
+        }
     } else if (activeNow && gScheduleDriving) {
         if (cfgCustomSpeedPercent != cfgScheduleSpeedPercent ||
             cfgLedDimmerPercent != cfgScheduleLedDimmerPercent) {
@@ -1647,7 +1686,7 @@ static void serviceWeeklySchedule() {
             cfgLedDimmerPercent = cfgScheduleLedDimmerPercent;
             renderLeds();
         }
-    } else if (!activeNow && gScheduleWindowWasActive && gScheduleDriving) {
+    } else if (!activeNow && gScheduleWindowWasActive) {
         fullPowerOff(POWER_CAUSE_SCHEDULE_END);
     }
     gScheduleWindowWasActive = activeNow;
@@ -1942,6 +1981,8 @@ static void servicePulseMetrics() {
                 gAcConnectOffCount++;
                 recordPowerEvent(POWER_EVENT_AC_PRESENT, POWER_CAUSE_AC_CONNECTED_SAFETY);
                 fullPowerOff(POWER_CAUSE_AC_CONNECTED_SAFETY);
+                gScheduleWindowWasActive = false;
+                gScheduleAcResumeAtMs = nowMs + 2000;
             }
             gAcPresent = true;
             gLastAcStableMs = nowMs;
@@ -2484,6 +2525,8 @@ static void webStatus() {
     s += "\"time\":{\"synced\":" + jsonBool(gTimeSynced) +
          ",\"epoch\":" + String(localEpochNow()) +
          ",\"tzOffsetMinutes\":" + String(gTzOffsetMinutes) +
+         ",\"source\":\"" + String(gClockSource) +
+         "\",\"timezone\":\"America/Denver\"" +
          ",\"durationTimer\":" + jsonBool(gDurationTimerActive) +
          ",\"durationOffInMs\":" + String(gDurationTimerActive ? (int32_t)(gDurationOffAtMs - millis()) : 0) +
          ",\"clockTimer\":" + jsonBool(gClockTimerActive) +
@@ -2881,10 +2924,15 @@ static void webPostTime() {
     String body = webServer.arg("plain");
     long epoch = jsonLong(body, "epoch", 0);
     if (epoch > 0) {
+        struct timeval tv = {(time_t)epoch, 0};
+        settimeofday(&tv, nullptr);
         gEpochAtSync = (uint32_t)epoch;
         gMillisAtSync = millis();
-        gTzOffsetMinutes = (int16_t)constrain(jsonInt(body, "tzOffsetMinutes", 0), -14 * 60, 14 * 60);
+        gClockSource = "browser";
+        gNtpSyncReceived = false;
         gTimeSynced = true;
+        gLastClockServiceMs = 0;
+        serviceClock();
         stampCurrentBootPowerEvents();
     }
     webOk("time");
@@ -3301,6 +3349,8 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(PIN_H11_4), onH11_4, CHANGE);
 
     startWeb();
+    configTzTime(TIMEZONE_RULE, "time.google.com", "pool.ntp.org", "time.cloudflare.com");
+    esp_sntp_set_time_sync_notification_cb(onNtpTimeSync);
     ds18b20StartConversion();
 }
 
@@ -3312,6 +3362,7 @@ void loop() {
         return;
     }
     serviceWifi();
+    serviceClock();
     serviceButton();
     serviceTemperature();
     servicePulseMetrics();

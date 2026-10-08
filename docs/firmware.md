@@ -8,7 +8,8 @@ The `data/` directory is the LittleFS image served by the ESP32-S3.
 
 At boot the MOC output is forced low and the mode is `OFF_LOOP`. When zero-cross
 activity first establishes that VAC is present, the controller again forces OFF;
-restored Wi-Fi, NVM settings, or a browser connection cannot start the motors.
+the schedule may resume only after VAC is confirmed, the two-second safety
+interval has elapsed, and the clock is synchronized.
 
 Short button presses follow:
 
@@ -39,6 +40,21 @@ entries retain a separate interval per selected day. An end earlier than start
 belongs to the following day; equal times disable that interval.
 
 Schedules and their speed/dimmer values persist in ESP32 Preferences NVM.
+The clock is obtained independently from SNTP after Wi-Fi joins the LAN. The
+firmware uses the `America/Denver` daylight-saving rule for weekday and minute
+boundaries. A browser can also provide the time when SNTP is unavailable;
+opening the app never sends a motor command. With no RTC battery, a total power
+loss followed by no LAN/Internet and no browser leaves the clock unknown, so the
+schedule waits for valid time while manual control remains available.
+
+An active schedule window owns its end boundary, even when a web command or
+button press changes the running mode. If manual control has already started
+the motor before a window begins, the window does not restart it or change its
+speed; it still turns it off at the scheduled end. Outside the selected window,
+manual controls work normally. A manual OFF during a window remains OFF until
+the next selected window. After a boot or VAC reconnection inside a window, the
+motor resumes only after the AC safety interval.
+
 Temperature history stores one hourly sample for seven days in NVM.
 Hourly samples are captured in RAM while motor output is active and committed
 after output stops, avoiding flash-backed NVM stalls during TRIAC firing.

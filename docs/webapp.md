@@ -32,8 +32,12 @@ second phone does not replay stale controls. Motor gate timing runs in a separat
 real-time task, so serving the login or application assets cannot interrupt an
 already active fan mode.
 
+When the ESP clock has not yet synchronized through NTP, the PWA may send the
+phone's current time even if the fan is already running. This only sets the
+clock; the saved schedule then applies its current start/end boundaries.
+
 Power tracking comes from the ESP32 rather than browser-local activity. Its
-summary and detail overlay show newest events first. A PWA session check is
+  summary and detail overlay show newest events first. A PWA session check is
 recorded for correlation, but log writes are deferred while motor firing is
 active and committed when the output is stopped. The controller never treats a
 page load or login as a fan command.

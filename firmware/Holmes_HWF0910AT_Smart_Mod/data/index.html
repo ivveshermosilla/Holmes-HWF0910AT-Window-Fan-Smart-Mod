@@ -2175,8 +2175,7 @@ input[type=color]{
   function syncTimeIfSafe(){
     const s=state.status||{};
     const time=s.time||{};
-    const schedule=s.schedule||{};
-    if(time.synced||s.motorRequested||schedule.active||schedule.driving) return Promise.resolve();
+    if(time.synced) return Promise.resolve();
     return syncTime();
   }
   function tempHistoryDays(){
