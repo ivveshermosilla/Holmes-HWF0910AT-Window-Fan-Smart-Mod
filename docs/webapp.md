@@ -27,14 +27,19 @@ single-page application with Home/System views and glass-styled detail overlays.
 ## Session Behavior
 
 Unknown devices see an empty login form. A successful login can be remembered in
-that browser. Initial page synchronization performs only GET requests; opening a
-second phone does not replay stale controls. Motor gate timing runs in a separate
+that browser. Initial page synchronization reads the current state and requests
+clock synchronization; opening a second phone does not replay stale controls.
+Motor gate timing runs in a separate
 real-time task, so serving the login or application assets cannot interrupt an
 already active fan mode.
 
-When the ESP clock has not yet synchronized through NTP, the PWA may send the
-phone's current time even if the fan is already running. This only sets the
-clock; the saved schedule then applies its current start/end boundaries.
+Each app connection or recovery requests NTP through `/api/time` with reason
+`app-reconnect`. When the clock is unknown or the LAN is unavailable, the phone
+also supplies its current time, even if the fan is already running. A valid
+online clock is preserved until NTP responds. Manual Sync directly applies the
+browser time. Automatic midnight and reconnection requests remain independent
+of manual Sync. Clock corrections allow the saved schedule to evaluate its
+actual current start/end boundaries.
 
 Power tracking comes from the ESP32 rather than browser-local activity. Its
   summary and detail overlay show newest events first. A PWA session check is

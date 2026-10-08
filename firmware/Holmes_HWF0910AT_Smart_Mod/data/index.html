@@ -1190,6 +1190,8 @@ input[type=color]{
   let scheduleSaveTimer=0;
   const ledColorTimers=[];
   let refreshBusy=false;
+  let clockConnectionObserved=false;
+  let clockDeviceUptime=0;
   let adminPollTimer=0;
   let wifiScanTimer=0;
   let wifiConnectTimer=0;
@@ -1273,7 +1275,8 @@ input[type=color]{
         try{localStorage.removeItem("fanLoginUser");localStorage.removeItem("fanLoginPass")}catch(_){}
       }
       hideLogin();
-      return refreshAll().then(syncTimeIfSafe);
+      clockConnectionObserved=false;
+      return refreshAll();
     }).catch(()=>{
       state.loggedIn=false;
       $("#loginError").textContent=tr("loginError");
@@ -1285,7 +1288,8 @@ input[type=color]{
       state.loggedIn=!!data.loggedIn;
       if(state.loggedIn){
         hideLogin();
-        return refreshAll().then(syncTimeIfSafe);
+        clockConnectionObserved=false;
+        return refreshAll();
       }
       const saved=storedLogin();
       if(saved.remember&&saved.user&&saved.pass) return loginWithForm();
@@ -1892,7 +1896,16 @@ input[type=color]{
   function refreshStatus(){
     if(refreshBusy) return Promise.resolve();
     refreshBusy=true;
-    return apiGet("/api/status").then(applyStatus).catch(err=>{
+    return apiGet("/api/status").then(s=>{
+      if(s.uptimeMs<clockDeviceUptime) clockConnectionObserved=false;
+      clockDeviceUptime=s.uptimeMs;
+      applyStatus(s);
+      if(!clockConnectionObserved){
+        clockConnectionObserved=true;
+        return syncTime("app-reconnect");
+      }
+    }).catch(err=>{
+      clockConnectionObserved=false;
       $("#apiText").textContent=tr("apiError");
       setDot("#apiDot","bad");
       $("#syncText").textContent=err.message;
@@ -2167,16 +2180,10 @@ input[type=color]{
       refreshStatus();
     }).catch(()=>toast(state.lang==="es"?"Error apagando":"Power error"));
   }
-  function syncTime(){
+  function syncTime(reason){
     const now=Math.floor(Date.now()/1000);
     const offset=-new Date().getTimezoneOffset();
-    return apiPost("/api/time",{epoch:now,tzOffsetMinutes:offset}).then(()=>refreshStatus()).catch(()=>{});
-  }
-  function syncTimeIfSafe(){
-    const s=state.status||{};
-    const time=s.time||{};
-    if(time.synced) return Promise.resolve();
-    return syncTime();
+    return apiPost("/api/time",{epoch:now,tzOffsetMinutes:offset,reason:typeof reason==="string"?reason:"manual"}).then(()=>refreshStatus());
   }
   function tempHistoryDays(){
     const hist=state.tempHistory||{};
@@ -2808,7 +2815,7 @@ input[type=color]{
       });
     }
     if(type==="time"){
-      $("#dSyncTime").addEventListener("click",syncTime);
+      $("#dSyncTime").addEventListener("click",()=>syncTime().catch(()=>toast(tr("apiError"))));
       $$("[data-day]").forEach(btn=>btn.addEventListener("click",()=>{
 	        readScheduleForm();
 	        const sch=state.config.schedule;
@@ -2987,6 +2994,10 @@ input[type=color]{
     window.addEventListener("load",()=>navigator.serviceWorker.register("/service-worker.js").catch(()=>{}));
   }
   setInterval(renderClock,1000);
+  window.addEventListener("online",()=>{clockConnectionObserved=false;if(state.loggedIn) refreshStatus()});
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden){clockConnectionObserved=false;if(state.loggedIn) refreshStatus()}
+  });
   setInterval(()=>{if(state.loggedIn) refreshStatus()},3000);
   setInterval(()=>{if(state.loggedIn&&state.view==="system") refreshPowerLog(false)},30000);
 })();

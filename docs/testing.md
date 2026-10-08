@@ -14,7 +14,7 @@
 
 ## Current Evidence
 
-- Reference version: `0.3.18-schedule-clock`.
+- Reference version: `0.3.19-clock-reconnect`.
 - Zero-cross telemetry near 120 edge events per second on 60 Hz mains.
 - DS18B20 live values with no current read-error accumulation.
 - MOC remains disarmed while OFF; commanded pulse count increments only when armed.
@@ -61,7 +61,7 @@
 - The 0.3.17 operational sketch compiled at 1,083,953 bytes (82%) with
   51,716 bytes of global RAM; the public sketch compiled at 1,083,821 bytes.
 - Firmware and LittleFS OTA succeeded through the recovery AP. After reboot the
-  ESP associated with the saved SSID, restored static `192.168.75.150`, and
+  ESP associated with the saved SSID, restored its configured static LAN IP, and
   served authenticated status through both AP and LAN.
 - A manual STA-only disconnect/reconnect increased the attempt counter from one
   to two. During the test TRIAC pulses advanced from 1,386 to 1,641 while
@@ -84,7 +84,39 @@
 - A forced STA reconnect preserved the clock and schedule. The original Daily
   schedule was restored and verified on all seven days after testing.
 
-## Limitations
+## Clock Reconnection Verification - 2026-10-08
+
+- Operational/public 0.3.19 sketches compiled at 1,104,293 / 1,104,145 bytes
+  (84%), with 51,964 bytes of global RAM (15%). Both LittleFS images built.
+- Firmware and LittleFS OTA succeeded. Served HTML and service-worker SHA256
+  matched the operational sources; the PWA cache is `hwf0910at-pwa-v9`.
+- Boot obtained NTP autonomously; an AP-client association also generated a
+  request. Reconnecting the app triggered a new completed NTP response.
+- An app reconnection carrying a deliberately one-hour-ahead browser timestamp
+  preserved the valid online ESP clock. Manual time sync still worked.
+- A forced LAN reconnect during manual HIGH produced a fresh completed NTP
+  response. All 32 live samples retained motor request, MOC arming, allowed
+  firing and the same AC-session count. Pulses advanced by 4,773; maximum pulse
+  gap was 8,402 us and temperature errors remained zero.
+- Restored the initial OFF state outside schedule hours. Compared the complete
+  saved seven-day Daily schedule before/after: no changes.
+- Portable tests cover all request reasons, offline retry, manual independence,
+  midnight on successive Denver dates, year rollover, millisecond overflow,
+  and the 25-hour fall daylight-saving day. Midnight was simulated in tests;
+  this daytime verification did not wait for or alter the real ESP clock to
+  reach midnight.
+- PWA tests cover first connection, recovered access, reboot detection, manual
+  sync, and ensure these flows only post to the time endpoint.
+
+Run the portable regression tests from the repository root:
+
+```bash
+g++ -std=c++11 -Wall -Wextra -pedantic tests/clock_policy_test.cpp -o /tmp/fan-clock-test
+/tmp/fan-clock-test
+node tests/clock_webapp_test.cjs
+```
+
+## Measurement Limits
 
 No current transformer, tachometer, or TRIAC-output voltage feedback is installed.
 Therefore software cannot independently prove blade rotation, delivered RMS

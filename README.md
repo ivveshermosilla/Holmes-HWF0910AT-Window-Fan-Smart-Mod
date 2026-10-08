@@ -52,7 +52,7 @@ recorded in [AI-Assisted Development](docs/ai-assisted-development.md). Spanish 
 
 ## Current Reference Build
 
-- Firmware: `0.3.18-schedule-clock`
+- Firmware: `0.3.19-clock-reconnect`
 - Target: ESP32-S3, 4 MB flash, no PSRAM assumption
 - Filesystem: LittleFS
 - Web client: framework-free HTML/CSS/JavaScript PWA

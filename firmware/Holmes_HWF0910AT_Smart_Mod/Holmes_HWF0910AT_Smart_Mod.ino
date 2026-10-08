@@ -14,12 +14,13 @@
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_sntp.h"
+#include "ClockSyncPolicy.h"
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static const char* FW_NAME = "Holmes HWF0910AT Window Fan Smart Mod by Ivves";
-static const char* FW_VERSION = "0.3.18-schedule-clock";
+static const char* FW_VERSION = "0.3.19-clock-reconnect";
 static const char* TIMEZONE_RULE = "MST7MDT,M3.2.0,M11.1.0";
 
 static const uint8_t PIN_ZERO_CROSS = 1;
@@ -335,6 +336,12 @@ static int16_t gTzOffsetMinutes = 0;
 static uint32_t gLastClockServiceMs = 0;
 static const char* gClockSource = "none";
 static volatile bool gNtpSyncReceived = false;
+static volatile uint32_t gNtpSyncEpoch = 0;
+static volatile uint32_t gApClockReconnectCount = 0;
+static uint32_t gApClockReconnectSeen = 0;
+static volatile uint32_t gLanClockReconnectCount = 0;
+static uint32_t gLanClockReconnectSeen = 0;
+static ClockSyncPolicy gClockSync;
 static bool gDurationTimerActive = false;
 static uint32_t gDurationOffAtMs = 0;
 static bool gClockTimerActive = false;
@@ -1600,7 +1607,13 @@ static uint16_t localMinuteOfDay(uint32_t epoch) {
     return (uint16_t)(local.tm_hour * 60 + local.tm_min);
 }
 
-static void onNtpTimeSync(struct timeval*) {
+static void requestClockSync(uint8_t reason) {
+    gClockSync.request(reason);
+    Serial0.printf("[TIME] Sync requested: reason=%u pending=%u\n", reason, gClockSync.pending);
+}
+
+static void onNtpTimeSync(struct timeval* tv) {
+    gNtpSyncEpoch = (uint32_t)tv->tv_sec;
     gNtpSyncReceived = true;
 }
 
@@ -1608,13 +1621,37 @@ static void serviceClock() {
     uint32_t nowMs = millis();
     if (nowMs - gLastClockServiceMs < 1000) return;
     gLastClockServiceMs = nowMs;
+    uint32_t lanReconnects = gLanClockReconnectCount;
+    if (lanReconnects != gLanClockReconnectSeen) {
+        gLanClockReconnectSeen = lanReconnects;
+        requestClockSync(CLOCK_LAN);
+    }
+    uint32_t apReconnects = gApClockReconnectCount;
+    if (apReconnects != gApClockReconnectSeen) {
+        gApClockReconnectSeen = apReconnects;
+        requestClockSync(CLOCK_AP_CLIENT);
+    }
+    if (gNtpSyncReceived) {
+        gNtpSyncReceived = false;
+        gClockSync.ntpCompleted(gNtpSyncEpoch);
+        gClockSource = "ntp";
+        Serial0.printf("[TIME] NTP sync completed: %lu\n", (unsigned long)gClockSync.lastNtpEpoch);
+    }
     time_t now = time(nullptr);
+    if (now > 1735689600) {
+        struct tm local;
+        localtime_r(&now, &local);
+        gClockSync.observeDay((uint32_t)(local.tm_year + 1900) * 1000 + local.tm_yday + 1);
+    }
+    if (gClockSync.shouldAttempt(nowMs, WiFi.status() == WL_CONNECTED)) {
+        gClockSync.attemptedAt(nowMs);
+        esp_sntp_restart();
+    }
     if (now <= 1735689600) return;
     struct tm utc;
     gmtime_r(&now, &utc);
     utc.tm_isdst = -1;
     gTzOffsetMinutes = (int16_t)(difftime(now, mktime(&utc)) / 60);
-    if (gNtpSyncReceived) gClockSource = "ntp";
     if (!gTimeSynced) {
         gTimeSynced = true;
         if (strcmp(gClockSource, "none") == 0) gClockSource = "ntp";
@@ -1978,6 +2015,7 @@ static void servicePulseMetrics() {
             }
             gZcOutputBlockedLogged = false;
             if (!gAcPresent) {
+                requestClockSync(CLOCK_AC);
                 gAcConnectOffCount++;
                 recordPowerEvent(POWER_EVENT_AC_PRESENT, POWER_CAUSE_AC_CONNECTED_SAFETY);
                 fullPowerOff(POWER_CAUSE_AC_CONNECTED_SAFETY);
@@ -2118,7 +2156,6 @@ static void startWifi() {
                        cfgApSsid.c_str(), WiFi.softAPIP().toString().c_str());
         return;
     }
-
     beginStaAttempt(false, "startup");
     Serial0.printf("[WIFI] AP %s at %s; STA connecting to %s hostname=%s\n",
                    cfgApSsid.c_str(), WiFi.softAPIP().toString().c_str(),
@@ -2527,6 +2564,14 @@ static void webStatus() {
          ",\"tzOffsetMinutes\":" + String(gTzOffsetMinutes) +
          ",\"source\":\"" + String(gClockSource) +
          "\",\"timezone\":\"America/Denver\"" +
+         ",\"syncPending\":" + String(gClockSync.pending) +
+         ",\"syncLastReasons\":" + String(gClockSync.lastReasons) +
+         ",\"syncRequests\":" + String(gClockSync.requests) +
+         ",\"syncAttempts\":" + String(gClockSync.attempts) +
+         ",\"syncCompletions\":" + String(gClockSync.completions) +
+         ",\"midnightSyncRequests\":" + String(gClockSync.midnightRequests) +
+         ",\"lastNtpEpoch\":" + String(gClockSync.lastNtpEpoch) +
+         ",\"lastManualEpoch\":" + String(gClockSync.lastManualEpoch) +
          ",\"durationTimer\":" + jsonBool(gDurationTimerActive) +
          ",\"durationOffInMs\":" + String(gDurationTimerActive ? (int32_t)(gDurationOffAtMs - millis()) : 0) +
          ",\"clockTimer\":" + jsonBool(gClockTimerActive) +
@@ -2923,13 +2968,15 @@ static void webPostTime() {
     if (!webAuthorized()) return;
     String body = webServer.arg("plain");
     long epoch = jsonLong(body, "epoch", 0);
-    if (epoch > 0) {
+    bool appReconnect = jsonString(body, "reason", "manual") == "app-reconnect";
+    if (appReconnect) requestClockSync(CLOCK_APP);
+    if (epoch > 1735689600 && (!appReconnect || !gTimeSynced || WiFi.status() != WL_CONNECTED)) {
         struct timeval tv = {(time_t)epoch, 0};
         settimeofday(&tv, nullptr);
         gEpochAtSync = (uint32_t)epoch;
         gMillisAtSync = millis();
         gClockSource = "browser";
-        gNtpSyncReceived = false;
+        if (!appReconnect) gClockSync.lastManualEpoch = (uint32_t)epoch;
         gTimeSynced = true;
         gLastClockServiceMs = 0;
         serviceClock();
@@ -3348,9 +3395,15 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(PIN_H11_3), onH11_3, CHANGE);
     attachInterrupt(digitalPinToInterrupt(PIN_H11_4), onH11_4, CHANGE);
 
-    startWeb();
-    configTzTime(TIMEZONE_RULE, "time.google.com", "pool.ntp.org", "time.cloudflare.com");
+    WiFi.onEvent([](arduino_event_id_t event) {
+        if (event == ARDUINO_EVENT_WIFI_AP_STACONNECTED) ++gApClockReconnectCount;
+        if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) ++gLanClockReconnectCount;
+    });
     esp_sntp_set_time_sync_notification_cb(onNtpTimeSync);
+    configTzTime(TIMEZONE_RULE, "time.google.com", "pool.ntp.org", "time.cloudflare.com");
+    esp_sntp_set_sync_interval(24UL * 60UL * 60UL * 1000UL);
+    requestClockSync(CLOCK_BOOT);
+    startWeb();
     ds18b20StartConversion();
 }
 

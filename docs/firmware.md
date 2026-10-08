@@ -47,6 +47,23 @@ opening the app never sends a motor command. With no RTC battery, a total power
 loss followed by no LAN/Internet and no browser leaves the clock unknown, so the
 schedule waits for valid time while manual control remains available.
 
+Clock synchronization is explicitly requested at boot, on each LAN IP recovery,
+on VAC recovery, when a client joins the recovery AP, and when the PWA opens or
+recovers access. A separate request is made when the Denver local clock crosses
+12:00 AM each day, including daylight-saving days. Manual synchronization does
+not reset that daily boundary or clear pending automatic requests. Requests are
+coalesced and retried at a minimum 15-second interval while the LAN is connected;
+without Internet they remain pending while an already valid clock keeps running.
+The PWA requests NTP on reconnection and supplies browser time only if the clock
+is unknown or the LAN is unavailable. Automatic reconnection does not replace a
+valid online clock with the connecting phone's time. Manual Sync still applies
+browser time directly. None of these handlers sends a motor command.
+
+`/api/status.time` exposes `lastNtpEpoch`, `lastManualEpoch`, `syncRequests`,
+`syncAttempts`, `syncCompletions`, `midnightSyncRequests`, and the reason bitmasks
+`syncPending`/`syncLastReasons`: boot=1, LAN=2, AC=4, AP client=8, PWA=16,
+midnight=32. A pending request is cleared only by a received NTP response.
+
 An active schedule window owns its end boundary, even when a web command or
 button press changes the running mode. If manual control has already started
 the motor before a window begins, the window does not restart it or change its

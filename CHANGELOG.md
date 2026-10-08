@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.19-clock-reconnect - 2026-10-08
+
+- Request NTP after boot, LAN IP recovery, VAC recovery, AP client association,
+  and PWA initial access or reconnection, with pending requests and retries.
+- Request time synchronization at each Denver local 12:00 AM independently
+  of manual synchronization, reconnects, and the normal SNTP periodic timer.
+- Preserve a valid online clock when another browser opens the PWA; use browser
+  time as an automatic fallback when the clock or LAN is unavailable.
+- Expose request reasons, retries, completed NTP timestamps and daily requests
+  in clock telemetry. Synchronization handlers do not issue motor commands.
+- Update the PWA cache to `hwf0910at-pwa-v9` and add portable clock/PWA tests.
+
 ## 0.3.18-schedule-clock - 2026-10-08
 
 - Restored autonomous time after reboot through SNTP, using Denver local time
@@ -29,7 +41,7 @@
 - Advanced the PWA cache to `hwf0910at-pwa-v7`.
 - Verified a forced STA reconnection while a saved Daily schedule was driving
   the fan: TRIAC pulses continued, motor/MOC gates stayed active, and the static
-  address returned at `192.168.75.150`.
+  configured static LAN address returned.
 
 ## 0.3.16-zc-stability - 2026-09-11
 
